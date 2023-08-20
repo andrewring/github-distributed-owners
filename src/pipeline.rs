@@ -144,4 +144,61 @@ mod test {
 
         Ok(())
     }
+
+    #[test]
+    fn test_multiple_files_with_overrides() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        let root_dir = temp_dir.path();
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
+            indoc! {
+                "ada.lovelace
+                grace.hopper
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/foo/OWNERS",
+            indoc! {"\
+                katherine.johnson
+                margaret.hamilton
+
+                [*.rs]
+                set inherit = false
+                grace.hopper
+                "
+            },
+        )?;
+
+        let expected = indoc! {"\
+            ################################################################################
+            #                             AUTO GENERATED FILE
+            #                            Do Not Manually Update
+            ################################################################################
+
+            / ada.lovelace grace.hopper
+            /subdir/foo/ ada.lovelace grace.hopper katherine.johnson margaret.hamilton
+            /subdir/foo/*.rs grace.hopper
+
+            ################################################################################
+            #                             AUTO GENERATED FILE
+            #                            Do Not Manually Update
+            ################################################################################
+            "
+        };
+
+        let output_file = root_dir.join("CODEOWNERS");
+        let repo_root = Some(root_dir.to_path_buf());
+        let implicit_inherit = true;
+
+        generate_codeowners_from_files(repo_root, Some(output_file.clone()), implicit_inherit)?;
+
+        let generated_codeowners = fs::read_to_string(output_file)?;
+
+        assert_eq!(generated_codeowners, expected);
+
+        Ok(())
+    }
 }

@@ -1,5 +1,7 @@
 use crate::owners_set::OwnersSet;
 use anyhow::anyhow;
+use lazy_static::lazy_static;
+use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
@@ -14,7 +16,7 @@ impl OwnersFileConfig {
     pub fn from_text<S: AsRef<str>>(text: S) -> anyhow::Result<OwnersFileConfig> {
         let text = text.as_ref();
         let mut config = OwnersFileConfig::default();
-        let current_set = &mut config.all_files;
+        let mut current_set = &mut config.all_files;
 
         for line in text.lines() {
             let line = clean_line(line);
@@ -23,6 +25,16 @@ impl OwnersFileConfig {
             }
             let is_set_line = current_set.maybe_process_set(line)?;
             if is_set_line {
+                continue;
+            }
+            if let Some(new_file_pattern) = maybe_get_file_pattern(line) {
+                config
+                    .pattern_overrides
+                    .insert(new_file_pattern.clone(), OwnersSet::default());
+                current_set = config
+                    .pattern_overrides
+                    .get_mut(new_file_pattern.as_str())
+                    .unwrap();
                 continue;
             }
             if line.contains(char::is_whitespace) {
@@ -48,9 +60,21 @@ fn clean_line(line: &str) -> &str {
     line.find('#').map(|i| &line[..i]).unwrap_or(line).trim()
 }
 
+fn maybe_get_file_pattern(line: &str) -> Option<String> {
+    lazy_static! {
+        static ref RE: Regex = Regex::new(r"^\s*\[\s*(?<pattern>\S+)\s*]\s*$").unwrap();
+    }
+    if let Some(captures) = RE.captures(line) {
+        let pattern = &captures["pattern"];
+        Some(pattern.to_string())
+    } else {
+        None
+    }
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::owners_file::OwnersFileConfig;
+    use crate::owners_file::{maybe_get_file_pattern, OwnersFileConfig};
     use crate::owners_set::OwnersSet;
     use indoc::indoc;
     use std::collections::{HashMap, HashSet};
@@ -102,5 +126,54 @@ mod tests {
         let parsed = OwnersFileConfig::from_text(input)?;
         assert_eq!(parsed, expected);
         Ok(())
+    }
+
+    #[test]
+    fn parse_blanket_with_pattern_overrides() -> anyhow::Result<()> {
+        let input = indoc! {"\
+            ada.lovelace
+            grace.hopper
+            margaret.hamilton
+
+            [*.rs]
+            katherine.johnson
+            "
+        };
+        let expected = OwnersFileConfig {
+            all_files: OwnersSet {
+                inherit: None,
+                owners: vec!["ada.lovelace", "grace.hopper", "margaret.hamilton"]
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            },
+            pattern_overrides: HashMap::from([(
+                "*.rs".to_string(),
+                OwnersSet {
+                    inherit: None,
+                    owners: vec!["katherine.johnson"]
+                        .into_iter()
+                        .map(|s| s.to_string())
+                        .collect::<HashSet<String>>(),
+                },
+            )]),
+        };
+
+        let parsed = OwnersFileConfig::from_text(input)?;
+        assert_eq!(parsed, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn test_maybe_get_file_pattern() {
+        assert_eq!(maybe_get_file_pattern("[*.rs]"), Some("*.rs".to_string()));
+        assert_eq!(maybe_get_file_pattern("[foo.*]"), Some("foo.*".to_string()));
+        assert_eq!(
+            maybe_get_file_pattern("  [  bar.*  ]  "),
+            Some("bar.*".to_string())
+        );
+        assert_eq!(maybe_get_file_pattern("ada.lovelace"), None);
+        assert_eq!(maybe_get_file_pattern(""), None);
+        assert_eq!(maybe_get_file_pattern("set inherit = false"), None);
     }
 }

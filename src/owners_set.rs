@@ -1,4 +1,5 @@
 use anyhow::anyhow;
+use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashSet;
 
@@ -17,8 +18,11 @@ impl OwnersSet {
         if !line.starts_with("set ") {
             return Ok(false);
         }
-        let re = Regex::new(r"set\s(?<variable>\w+)\s=\s(?<value>\w+)").unwrap();
-        if let Some(captures) = re.captures(line) {
+        lazy_static! {
+            static ref RE: Regex =
+                Regex::new(r"^\s*set\s(?<variable>\w+)\s*=\s*(?<value>\w+)\s*$").unwrap();
+        }
+        if let Some(captures) = RE.captures(line) {
             let variable = &captures["variable"];
             let value = &captures["value"];
             match variable {
