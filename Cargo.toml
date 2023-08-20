@@ -9,9 +9,9 @@ authors = ["Andrew Ring"]
 [dependencies]
 anyhow = "1.0.75"
 clap = { version = "4.3.23", features = ["derive"] }
+indoc = "2.0.3"
 itertools = "0.11.0"
 regex = "1.9.3"
 
 [dev-dependencies]
-indoc = "2.0.3"
 tempfile = "3.8.0"

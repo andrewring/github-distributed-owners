@@ -70,16 +70,17 @@ mod tests {
     use crate::owners_file::OwnersFileConfig;
     use crate::owners_set::OwnersSet;
     use crate::owners_tree::{OwnersTree, TreeNode};
+    use crate::test_utils::create_test_file;
     use indoc::indoc;
     use std::collections::HashSet;
-    use std::fs;
     use tempfile::tempdir;
 
     #[test]
     fn single_file_at_root() -> anyhow::Result<()> {
         let temp_dir = tempdir()?;
-        fs::write(
-            temp_dir.path().join("OWNERS"),
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
             indoc! {"\
                 ada.lovelace
                 grace.hopper
@@ -113,10 +114,9 @@ mod tests {
     #[test]
     fn single_file_not_at_root() -> anyhow::Result<()> {
         let temp_dir = tempdir()?;
-        let owners_dir = temp_dir.path().join("subdir");
-        fs::create_dir_all(&owners_dir)?;
-        fs::write(
-            owners_dir.join("OWNERS"),
+        create_test_file(
+            &temp_dir,
+            "subdir/OWNERS",
             indoc! {"\
                 ada.lovelace
                 grace.hopper
@@ -128,7 +128,7 @@ mod tests {
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
             children: vec![TreeNode {
-                path: owners_dir.to_path_buf(),
+                path: temp_dir.path().join("subdir").to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         owners: vec![
@@ -154,22 +154,23 @@ mod tests {
     #[test]
     fn multiple_files() -> anyhow::Result<()> {
         let temp_dir = tempdir()?;
-        fs::write(
-            temp_dir.path().join("OWNERS"),
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
             indoc! {"\
                 ada.lovelace
                 grace.hopper
                 "
             },
         )?;
-        let subdir = temp_dir.path().join("subdir").join("foo");
-        fs::create_dir_all(&subdir)?;
-        fs::write(
-            subdir.join("OWNERS"),
-            r#"
-            margaret.hamilton
-            katherine.johnson
-        "#,
+        create_test_file(
+            &temp_dir,
+            "subdir/foo/OWNERS",
+            indoc! {"\
+                margaret.hamilton
+                katherine.johnson
+                "
+            },
         )?;
         let tree = OwnersTree::load_from_files(temp_dir.path())?;
         let expected = TreeNode {
@@ -184,7 +185,7 @@ mod tests {
                 ..OwnersFileConfig::default()
             },
             children: vec![TreeNode {
-                path: subdir.to_path_buf(),
+                path: temp_dir.path().join("subdir/foo").to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         owners: vec![
