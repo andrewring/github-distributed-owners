@@ -51,3 +51,27 @@ user5
 
 In the above, changes files under `/` or `/foo` can be approved by any of `user0`, `user1`, `user2`, `user3`.
 Changes to files under `/foo/bar` can only be approved by `user4`, and `user5`, however.
+
+## File Patterns
+
+Where listed users/groups at the top of the file are used to define ownership of all files at the directory level, you
+can specify patterns within a directory, as well. This is done by providing the pattern in square brackets, like
+`[*.rs]`, with owners and set values after.
+
+Example:
+```shell
+# Directory level owners
+user0
+user1
+
+# Additional owners for rust source files
+[*.rs]
+user2
+user3
+
+# Separate owners for special files
+[special_*]
+set inherit = false
+user4
+user5
+```
