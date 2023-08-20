@@ -1,0 +1,18 @@
+[package]
+name = "github-distributed-owners"
+version = "0.1.0"
+edition = "2021"
+authors = ["Andrew Ring"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+anyhow = "1.0.75"
+clap = { version = "4.3.23", features = ["derive"] }
+indoc = "2.0.3"
+itertools = "0.11.0"
+lazy_static = "1.4.0"
+regex = "1.9.3"
+
+[dev-dependencies]
+tempfile = "3.8.0"
