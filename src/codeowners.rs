@@ -80,10 +80,11 @@ fn add_codeowners(
 
 #[cfg(test)]
 mod test {
-    use crate::codeowners::generate_codeowners;
+    use crate::codeowners::{generate_codeowners, to_codeowners_string};
     use crate::owners_file::OwnersFileConfig;
     use crate::owners_set::OwnersSet;
     use crate::owners_tree::TreeNode;
+    use indoc::indoc;
     use std::collections::{HashMap, HashSet};
     use std::path::PathBuf;
 
@@ -580,6 +581,102 @@ mod test {
         let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
+
+        Ok(())
+    }
+
+    #[test]
+    fn to_codeowners_string_multilevel() -> anyhow::Result<()> {
+        let codeowners = HashMap::from([
+            (
+                "/".to_string(),
+                vec!["ada.lovelace"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            (
+                "/*.rs".to_string(),
+                vec!["ada.lovelace", "margaret.hamilton"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            (
+                "foo/bar/".to_string(),
+                vec!["ada.lovelace", "grace.hopper"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            (
+                "foo/bar/*.rs".to_string(),
+                vec!["katherine.johnson"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+        ]);
+
+        let expected = indoc!(
+            "/ ada.lovelace
+            /*.rs ada.lovelace margaret.hamilton
+            foo/bar/ ada.lovelace grace.hopper
+            foo/bar/*.rs katherine.johnson"
+        )
+        .to_string();
+
+        let codeowners_text = to_codeowners_string(codeowners);
+
+        assert_eq!(codeowners_text, expected);
+
+        Ok(())
+    }
+
+    #[test]
+    fn to_codeowners_string_multilevel_sorting() -> anyhow::Result<()> {
+        let codeowners = HashMap::from([
+            (
+                "foo/bar/*.rs".to_string(),
+                vec!["katherine.johnson"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            (
+                "/".to_string(),
+                vec!["ada.lovelace"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            (
+                "foo/bar/".to_string(),
+                vec!["ada.lovelace", "grace.hopper"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            (
+                "/*.rs".to_string(),
+                vec!["ada.lovelace", "margaret.hamilton"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+        ]);
+
+        let expected = indoc!(
+            "/ ada.lovelace
+            /*.rs ada.lovelace margaret.hamilton
+            foo/bar/ ada.lovelace grace.hopper
+            foo/bar/*.rs katherine.johnson"
+        )
+        .to_string();
+
+        let codeowners_text = to_codeowners_string(codeowners);
+
+        assert_eq!(codeowners_text, expected);
 
         Ok(())
     }
