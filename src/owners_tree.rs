@@ -70,6 +70,7 @@ mod tests {
     use crate::owners_file::OwnersFileConfig;
     use crate::owners_set::OwnersSet;
     use crate::owners_tree::{OwnersTree, TreeNode};
+    use indoc::indoc;
     use std::collections::HashSet;
     use std::fs;
     use tempfile::tempdir;
@@ -79,11 +80,12 @@ mod tests {
         let temp_dir = tempdir()?;
         fs::write(
             temp_dir.path().join("OWNERS"),
-            r#"
-            ada.lovelace
-            grace.hopper
-            margaret.hamilton
-        "#,
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                margaret.hamilton
+                "
+            },
         )?;
         let tree = OwnersTree::load_from_files(temp_dir.path())?;
         let expected = TreeNode {
@@ -115,11 +117,12 @@ mod tests {
         fs::create_dir_all(&owners_dir)?;
         fs::write(
             owners_dir.join("OWNERS"),
-            r#"
-            ada.lovelace
-            grace.hopper
-            margaret.hamilton
-        "#,
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                margaret.hamilton
+                "
+            },
         )?;
         let tree = OwnersTree::load_from_files(temp_dir.path())?;
         let expected = TreeNode {
@@ -153,10 +156,11 @@ mod tests {
         let temp_dir = tempdir()?;
         fs::write(
             temp_dir.path().join("OWNERS"),
-            r#"
-            ada.lovelace
-            grace.hopper
-        "#,
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                "
+            },
         )?;
         let subdir = temp_dir.path().join("subdir").join("foo");
         fs::create_dir_all(&subdir)?;

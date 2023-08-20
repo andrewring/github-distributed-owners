@@ -1,6 +1,8 @@
 use crate::codeowners::{generate_codeowners, to_codeowners_string};
 use crate::owners_tree::OwnersTree;
 use clap::Parser;
+use std::fs;
+use std::fs::create_dir_all;
 use std::path::PathBuf;
 
 mod codeowners;
@@ -26,17 +28,74 @@ struct Args {
     implicit_inherit: bool,
 }
 
+fn generate_codeowners_from_files(args: Args) -> anyhow::Result<()> {
+    let root = args.repo_root.unwrap_or(std::env::current_dir()?);
+    let tree = OwnersTree::load_from_files(root)?;
+
+    let codeowners = generate_codeowners(&tree, args.implicit_inherit)?;
+    let mut codeowners_text = to_codeowners_string(codeowners);
+
+    match args.output_file {
+        None => println!("{}", codeowners_text),
+        Some(output_file) => {
+            if let Some(parent_dir) = output_file.parent() {
+                create_dir_all(parent_dir)?;
+            }
+
+            // Files should end with a newline
+            codeowners_text.push('\n');
+
+            fs::write(output_file, codeowners_text)?;
+        }
+    }
+
+    Ok(())
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
 
-    println!("args: {:#?}", &args);
+    generate_codeowners_from_files(args)
+}
 
-    let root = args.repo_root.unwrap_or(std::env::current_dir()?);
-    let tree = OwnersTree::load_from_files(root)?;
-    println!("tree: {:#?}", &tree);
+#[cfg(test)]
+mod test {
+    use crate::{generate_codeowners_from_files, Args};
+    use indoc::indoc;
+    use std::fs;
+    use tempfile::tempdir;
 
-    let codeowners = generate_codeowners(&tree, args.implicit_inherit)?;
-    let codeowners_text = to_codeowners_string(codeowners);
-    println!("{}", codeowners_text);
-    Ok(())
+    #[test]
+    fn test_simple() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        let root_dir = temp_dir.path();
+        fs::write(
+            root_dir.join("OWNERS"),
+            indoc! {
+                "ada.lovelace
+                grace.hopper
+                "
+            },
+        )?;
+
+        let expected = indoc! {"\
+            / ada.lovelace grace.hopper
+            "
+        };
+
+        let output_file = root_dir.join("CODEOWNERS");
+        let args = Args {
+            repo_root: Some(root_dir.to_path_buf()),
+            output_file: Some(output_file.clone()),
+            implicit_inherit: true,
+        };
+
+        generate_codeowners_from_files(args)?;
+
+        let generated_codeowners = fs::read_to_string(output_file)?;
+
+        assert_eq!(generated_codeowners, expected);
+
+        Ok(())
+    }
 }

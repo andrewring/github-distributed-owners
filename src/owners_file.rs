@@ -52,15 +52,17 @@ fn clean_line(line: &str) -> &str {
 mod tests {
     use crate::owners_file::OwnersFileConfig;
     use crate::owners_set::OwnersSet;
+    use indoc::indoc;
     use std::collections::{HashMap, HashSet};
 
     #[test]
     fn parse_blanket_owners_only() -> anyhow::Result<()> {
-        let input = r#"
+        let input = indoc! {"\
             ada.lovelace
             grace.hopper
             margaret.hamilton
-        "#;
+            "
+        };
         let expected = OwnersFileConfig {
             all_files: OwnersSet {
                 inherit: None,
@@ -79,12 +81,13 @@ mod tests {
 
     #[test]
     fn parse_blanket_owners_with_inherit() -> anyhow::Result<()> {
-        let input = r#"
+        let input = indoc! {"\
             set inherit = false
             ada.lovelace
             grace.hopper
             margaret.hamilton
-        "#;
+            "
+        };
         let expected = OwnersFileConfig {
             all_files: OwnersSet {
                 inherit: Some(false),
