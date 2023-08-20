@@ -8,11 +8,12 @@ pub fn to_codeowners_string(codeowners: HashMap<String, HashSet<String>>) -> Str
         .keys()
         .sorted()
         .map(|pattern| {
-            format!(
-                "{} {}",
-                &pattern,
-                codeowners.get(pattern).unwrap().iter().sorted().join(" ")
-            )
+            let mut line = pattern.to_string();
+            let owners = codeowners.get(pattern).unwrap().iter().sorted().join(" ");
+            if !owners.is_empty() {
+                line = format!("{} {}", line, owners);
+            }
+            line
         })
         .join("\n")
 }
