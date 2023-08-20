@@ -41,12 +41,16 @@ fn add_codeowners(
 ) -> anyhow::Result<()> {
     let owners_config = &tree_node.owners_config;
     let owners_set = &owners_config.all_files;
-    let relative_path = tree_node
+    let mut relative_path = tree_node
         .path
         .strip_prefix(root_path)?
         .to_string_lossy()
         .to_string()
         + "/";
+    // Always use explicit paths from root
+    if !relative_path.starts_with('/') {
+        relative_path = format!("/{}", relative_path);
+    }
 
     // Gather directory level owners
     let mut owners = HashSet::default();
@@ -161,7 +165,7 @@ mod test {
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/".to_string(),
+                "/foo/bar/".to_string(),
                 vec![
                     "ada.lovelace",
                     "grace.hopper",
@@ -302,14 +306,14 @@ mod test {
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/".to_string(),
+                "/foo/bar/".to_string(),
                 vec!["ada.lovelace", "grace.hopper"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/*.rs".to_string(),
+                "/foo/bar/*.rs".to_string(),
                 vec!["ada.lovelace", "grace.hopper", "katherine.johnson"]
                     .iter()
                     .map(|s| s.to_string())
@@ -389,14 +393,14 @@ mod test {
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/".to_string(),
+                "/foo/bar/".to_string(),
                 vec!["grace.hopper"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/*.rs".to_string(),
+                "/foo/bar/*.rs".to_string(),
                 vec!["katherine.johnson"]
                     .iter()
                     .map(|s| s.to_string())
@@ -476,14 +480,14 @@ mod test {
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/".to_string(),
+                "/foo/bar/".to_string(),
                 vec!["grace.hopper"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/*.rs".to_string(),
+                "/foo/bar/*.rs".to_string(),
                 vec!["grace.hopper", "katherine.johnson"]
                     .iter()
                     .map(|s| s.to_string())
@@ -563,14 +567,14 @@ mod test {
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/".to_string(),
+                "/foo/bar/".to_string(),
                 vec!["ada.lovelace", "grace.hopper"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/*.rs".to_string(),
+                "/foo/bar/*.rs".to_string(),
                 vec!["katherine.johnson"]
                     .iter()
                     .map(|s| s.to_string())
@@ -603,14 +607,14 @@ mod test {
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/".to_string(),
+                "/foo/bar/".to_string(),
                 vec!["ada.lovelace", "grace.hopper"]
                     .iter()
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/*.rs".to_string(),
+                "/foo/bar/*.rs".to_string(),
                 vec!["katherine.johnson"]
                     .iter()
                     .map(|s| s.to_string())
@@ -621,8 +625,8 @@ mod test {
         let expected = indoc!(
             "/ ada.lovelace
             /*.rs ada.lovelace margaret.hamilton
-            foo/bar/ ada.lovelace grace.hopper
-            foo/bar/*.rs katherine.johnson"
+            /foo/bar/ ada.lovelace grace.hopper
+            /foo/bar/*.rs katherine.johnson"
         )
         .to_string();
 
@@ -637,7 +641,7 @@ mod test {
     fn to_codeowners_string_multilevel_sorting() -> anyhow::Result<()> {
         let codeowners = HashMap::from([
             (
-                "foo/bar/*.rs".to_string(),
+                "/foo/bar/*.rs".to_string(),
                 vec!["katherine.johnson"]
                     .iter()
                     .map(|s| s.to_string())
@@ -651,7 +655,7 @@ mod test {
                     .collect::<HashSet<String>>(),
             ),
             (
-                "foo/bar/".to_string(),
+                "/foo/bar/".to_string(),
                 vec!["ada.lovelace", "grace.hopper"]
                     .iter()
                     .map(|s| s.to_string())
@@ -669,8 +673,8 @@ mod test {
         let expected = indoc!(
             "/ ada.lovelace
             /*.rs ada.lovelace margaret.hamilton
-            foo/bar/ ada.lovelace grace.hopper
-            foo/bar/*.rs katherine.johnson"
+            /foo/bar/ ada.lovelace grace.hopper
+            /foo/bar/*.rs katherine.johnson"
         )
         .to_string();
 
