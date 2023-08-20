@@ -590,6 +590,52 @@ mod test {
     }
 
     #[test]
+    fn generate_codeowners_subdir_without_owners() -> anyhow::Result<()> {
+        let tree_node = TreeNode {
+            path: PathBuf::from("/tree/root"),
+            owners_config: OwnersFileConfig {
+                all_files: OwnersSet {
+                    inherit: None,
+                    owners: vec!["ada.lovelace", "grace.hopper"]
+                        .iter()
+                        .map(|s| s.to_string())
+                        .collect::<HashSet<String>>(),
+                },
+                pattern_overrides: HashMap::default(),
+            },
+            children: vec![TreeNode {
+                path: PathBuf::from("/tree/root/foo/bar"),
+                owners_config: OwnersFileConfig {
+                    all_files: OwnersSet {
+                        inherit: Some(false),
+                        owners: HashSet::default(),
+                    },
+                    pattern_overrides: HashMap::default(),
+                },
+                children: vec![],
+            }],
+        };
+        let implicit_inherit = true;
+
+        let expected = HashMap::from([
+            (
+                "/".to_string(),
+                vec!["ada.lovelace", "grace.hopper"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            ("/foo/bar/".to_string(), HashSet::default()),
+        ]);
+
+        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+
+        assert_eq!(codeowners, expected);
+
+        Ok(())
+    }
+
+    #[test]
     fn to_codeowners_string_multilevel() -> anyhow::Result<()> {
         let codeowners = HashMap::from([
             (
@@ -674,6 +720,48 @@ mod test {
             "/ ada.lovelace
             /*.rs ada.lovelace margaret.hamilton
             /foo/bar/ ada.lovelace grace.hopper
+            /foo/bar/*.rs katherine.johnson"
+        )
+        .to_string();
+
+        let codeowners_text = to_codeowners_string(codeowners);
+
+        assert_eq!(codeowners_text, expected);
+
+        Ok(())
+    }
+
+    #[test]
+    fn to_codeowners_string_subdir_without_owners() -> anyhow::Result<()> {
+        let codeowners = HashMap::from([
+            (
+                "/".to_string(),
+                vec!["ada.lovelace"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            (
+                "/*.rs".to_string(),
+                vec!["ada.lovelace", "margaret.hamilton"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+            ("/foo/bar/".to_string(), HashSet::default()),
+            (
+                "/foo/bar/*.rs".to_string(),
+                vec!["katherine.johnson"]
+                    .iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            ),
+        ]);
+
+        let expected = indoc!(
+            "/ ada.lovelace
+            /*.rs ada.lovelace margaret.hamilton
+            /foo/bar/
             /foo/bar/*.rs katherine.johnson"
         )
         .to_string();

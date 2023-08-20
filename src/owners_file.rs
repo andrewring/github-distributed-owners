@@ -11,18 +11,6 @@ pub struct OwnersFileConfig {
 }
 
 impl OwnersFileConfig {
-    pub fn is_empty(&self) -> bool {
-        if !self.all_files.owners.is_empty() {
-            return false;
-        }
-        for set in self.pattern_overrides.values() {
-            if !set.owners.is_empty() {
-                return false;
-            }
-        }
-        true
-    }
-
     pub fn from_text<S: AsRef<str>>(text: S) -> anyhow::Result<OwnersFileConfig> {
         let text = text.as_ref();
         let mut config = OwnersFileConfig::default();
