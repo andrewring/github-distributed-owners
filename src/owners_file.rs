@@ -76,13 +76,10 @@ mod tests {
         let expected = OwnersFileConfig {
             all_files: OwnersSet {
                 inherit: None,
-                owners: vec![
-                    "ada.lovelace".to_string(),
-                    "grace.hopper".to_string(),
-                    "margaret.hamilton".to_string(),
-                ]
-                .into_iter()
-                .collect::<HashSet<String>>(),
+                owners: vec!["ada.lovelace", "grace.hopper", "margaret.hamilton"]
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
             },
             pattern_overrides: HashMap::default(),
         };
@@ -103,13 +100,10 @@ mod tests {
         let expected = OwnersFileConfig {
             all_files: OwnersSet {
                 inherit: Some(false),
-                owners: vec![
-                    "ada.lovelace".to_string(),
-                    "grace.hopper".to_string(),
-                    "margaret.hamilton".to_string(),
-                ]
-                .into_iter()
-                .collect::<HashSet<String>>(),
+                owners: vec!["ada.lovelace", "grace.hopper", "margaret.hamilton"]
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
             },
             pattern_overrides: HashMap::default(),
         };

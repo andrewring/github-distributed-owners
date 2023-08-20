@@ -3,19 +3,19 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 #[derive(PartialEq, Debug, Default)]
-pub struct Node {
-    path: PathBuf,
-    owners_config: OwnersFileConfig,
-    children: Vec<Node>,
+pub struct TreeNode {
+    pub path: PathBuf,
+    pub owners_config: OwnersFileConfig,
+    pub children: Vec<TreeNode>,
 }
 
-pub type Tree = Node;
+pub type OwnersTree = TreeNode;
 
-impl Node {
-    pub fn new<P: AsRef<Path>>(path: P) -> Node {
-        Node {
+impl TreeNode {
+    pub fn new<P: AsRef<Path>>(path: P) -> TreeNode {
+        TreeNode {
             path: path.as_ref().to_path_buf(),
-            ..Node::default()
+            ..TreeNode::default()
         }
     }
 
@@ -31,8 +31,8 @@ impl Node {
         Ok(true)
     }
 
-    pub fn load_from_files<P: AsRef<Path>>(root: P) -> anyhow::Result<Node> {
-        let mut root_node = Node::new(&root);
+    pub fn load_from_files<P: AsRef<Path>>(root: P) -> anyhow::Result<TreeNode> {
+        let mut root_node = TreeNode::new(&root);
         root_node.maybe_load_owners_file()?;
         for entry in fs::read_dir(root)? {
             let entry = entry?;
@@ -45,7 +45,7 @@ impl Node {
     }
 
     fn load_children_from_files(&mut self, directory: &Path) -> anyhow::Result<()> {
-        let mut current_loc_node = Node::new(directory);
+        let mut current_loc_node = TreeNode::new(directory);
         let has_current_owners_file = current_loc_node.maybe_load_owners_file()?;
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
@@ -69,7 +69,7 @@ impl Node {
 mod tests {
     use crate::owners_file::OwnersFileConfig;
     use crate::owners_set::OwnersSet;
-    use crate::tree::{Node, Tree};
+    use crate::owners_tree::{OwnersTree, TreeNode};
     use std::collections::HashSet;
     use std::fs;
     use tempfile::tempdir;
@@ -85,8 +85,8 @@ mod tests {
             margaret.hamilton
         "#,
         )?;
-        let tree = Tree::load_from_files(temp_dir.path())?;
-        let expected = Node {
+        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
@@ -101,7 +101,7 @@ mod tests {
                 },
                 ..OwnersFileConfig::default()
             },
-            ..Node::default()
+            ..TreeNode::default()
         };
 
         assert_eq!(tree, expected);
@@ -121,10 +121,10 @@ mod tests {
             margaret.hamilton
         "#,
         )?;
-        let tree = Tree::load_from_files(temp_dir.path())?;
-        let expected = Node {
+        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
-            children: vec![Node {
+            children: vec![TreeNode {
                 path: owners_dir.to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
@@ -139,9 +139,9 @@ mod tests {
                     },
                     ..OwnersFileConfig::default()
                 },
-                ..Node::default()
+                ..TreeNode::default()
             }],
-            ..Node::default()
+            ..TreeNode::default()
         };
 
         assert_eq!(tree, expected);
@@ -167,8 +167,8 @@ mod tests {
             katherine.johnson
         "#,
         )?;
-        let tree = Tree::load_from_files(temp_dir.path())?;
-        let expected = Node {
+        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
@@ -179,7 +179,7 @@ mod tests {
                 },
                 ..OwnersFileConfig::default()
             },
-            children: vec![Node {
+            children: vec![TreeNode {
                 path: subdir.to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
@@ -193,7 +193,7 @@ mod tests {
                     },
                     ..OwnersFileConfig::default()
                 },
-                ..Node::default()
+                ..TreeNode::default()
             }],
         };
 
