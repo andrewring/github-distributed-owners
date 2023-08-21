@@ -96,3 +96,11 @@ set inherit = false
 user4
 user5
 ```
+
+## License
+
+This Action is distributed under the terms of the MIT license, see [LICENSE](LICENSE) for details.
+
+## Contribute and support
+
+Any contributions are welcomed!
