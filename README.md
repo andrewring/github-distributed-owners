@@ -23,6 +23,27 @@ directory of the git repo
 github-distributed-owners --output-file .github/CODEOWNERS
 ```
 
+### Pre-commit
+
+Example pre-commit config:
+```yaml
+repos:
+  - repo: https://github.com/andrewring/github-distributed-owners
+    rev: v0.1.0
+    hooks:
+      - id: github-distributed-owners
+```
+
+The default CODEOWNERS location is `.github/CODEOWNERS`. This can be changed via
+```yaml
+    hooks:
+      - id: github-distributed-owners
+        args: ["--output-file=<FILE_PATH>"]
+```
+Note that GitHub will only respect CODEOWNERS files in a small number of locations. See
+[the documentation](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#codeowners-file-location)
+for details.
+
 ## Ownership Inheritance
 
 By default, owners of directories are automatically included as owners of subdirectories. The default behavior can be
