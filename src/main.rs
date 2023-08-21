@@ -25,7 +25,8 @@ struct Args {
 
     /// Whether to inherit owners when inheritance is not specified. Default: true.
     #[arg(short, long, default_value = "true")]
-    implicit_inherit: bool,
+    // NB: Option<bool> allows for --implicit-inherit [true|false], default means it's always Some
+    implicit_inherit: Option<bool>,
 }
 
 fn main() -> anyhow::Result<()> {
@@ -34,6 +35,7 @@ fn main() -> anyhow::Result<()> {
     pipeline::generate_codeowners_from_files(
         args.repo_root,
         args.output_file,
-        args.implicit_inherit,
+        args.implicit_inherit
+            .expect("--implicit-inherit must be set to either true or false"),
     )
 }
