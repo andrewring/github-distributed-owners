@@ -26,37 +26,28 @@ impl OwnersSet {
             let variable = &captures["variable"];
             let value = &captures["value"];
             match variable {
-                "inherit" => {
-                    match value {
-                        "true" => {
-                            self.inherit = Some(true);
-                        }
-                        "false" => {
-                            self.inherit = Some(false);
-                        }
-                        _ => {
-                            return Err(anyhow!(
-                            "Invalid value for inherit '{}': Must be 'true' or 'false'.  Found at {}:{}",
-                            value, file!(), line!()
-                        ))
-                        }
+                "inherit" => match value {
+                    "true" => {
+                        self.inherit = Some(true);
                     }
-                }
+                    "false" => {
+                        self.inherit = Some(false);
+                    }
+                    _ => {
+                        return Err(anyhow!(
+                            "Invalid value for inherit '{}': Must be 'true' or 'false'.",
+                            value
+                        ))
+                    }
+                },
                 _ => {
-                    return Err(anyhow!(
-                        "Invalid set variable '{}' in {}:{}",
-                        variable,
-                        file!(),
-                        line!()
-                    ));
+                    return Err(anyhow!("Invalid set variable '{}'", variable,));
                 }
             }
         } else {
             return Err(anyhow!(
-                "Invalid set format '{}']. Expected 'set <variable> = <value>'. Found at {}:{}",
+                "Invalid set format '{}']. Expected 'set <variable> = <value>'.",
                 line,
-                file!(),
-                line!(),
             ));
         }
         Ok(true)
