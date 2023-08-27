@@ -45,13 +45,8 @@ impl TreeNode {
     }
 
     fn load_children_from_files(&mut self, directory: &Path) -> anyhow::Result<()> {
-        if directory
-            .file_name()
-            .unwrap()
-            .to_string_lossy()
-            .starts_with('.')
-        {
-            // Don't process hidden directories, such as .git
+        if directory.file_name().unwrap() == ".git" {
+            // Don't process git metadata
             return Ok(());
         }
         let mut current_loc_node = TreeNode::new(directory);
@@ -229,7 +224,7 @@ mod tests {
         )?;
         create_test_file(
             &temp_dir,
-            "subdir/.foo/OWNERS",
+            "subdir/.git/OWNERS",
             indoc! {"\
                 margaret.hamilton
                 katherine.johnson
