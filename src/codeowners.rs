@@ -15,6 +15,8 @@ pub fn to_codeowners_string(codeowners: HashMap<String, HashSet<String>>) -> Str
             }
             line
         })
+        // Don't include a root level owner line if no owners are specified
+        .filter(|line| line != "/")
         .join("\n")
 }
 
