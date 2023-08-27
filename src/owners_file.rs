@@ -39,8 +39,10 @@ impl OwnersFileConfig {
             }
             if line.contains(char::is_whitespace) {
                 return Err(anyhow!(
-                    "Invalid user/group '{}', cannot contain whitespace",
-                    line
+                    "Invalid user/group '{}' cannot contain whitespace. Found at {}:{}",
+                    line,
+                    file!(),
+                    line!()
                 ));
             }
             current_set.owners.insert(line.to_string());
