@@ -13,17 +13,27 @@ pub struct OwnersFileConfig {
 }
 
 impl OwnersFileConfig {
-    pub fn from_text<S: AsRef<str>>(text: S) -> anyhow::Result<OwnersFileConfig> {
+    pub fn from_text<S0: AsRef<str>, S1: AsRef<str>>(
+        text: S0,
+        source: S1,
+    ) -> anyhow::Result<OwnersFileConfig> {
         let text = text.as_ref();
         let mut config = OwnersFileConfig::default();
         let mut current_set = &mut config.all_files;
 
-        for line in text.lines() {
+        for (line_number, line) in text.lines().enumerate() {
             let line = clean_line(line);
             if line.is_empty() {
                 continue;
             }
-            let is_set_line = current_set.maybe_process_set(line)?;
+            let is_set_line = current_set.maybe_process_set(line).map_err(|error| {
+                anyhow!(
+                    "{} Encountered at {}:{}",
+                    error.to_string(),
+                    source.as_ref(),
+                    line_number
+                )
+            })?;
             if is_set_line {
                 continue;
             }
@@ -41,8 +51,8 @@ impl OwnersFileConfig {
                 return Err(anyhow!(
                     "Invalid user/group '{}' cannot contain whitespace. Found at {}:{}",
                     line,
-                    file!(),
-                    line!()
+                    source.as_ref(),
+                    line_number
                 ));
             }
             current_set.owners.insert(line.to_string());
@@ -52,8 +62,13 @@ impl OwnersFileConfig {
     }
 
     pub fn from_file<P: AsRef<Path>>(path: P) -> anyhow::Result<OwnersFileConfig> {
-        let text = fs::read_to_string(path)?;
-        Self::from_text(text)
+        let text = fs::read_to_string(&path)?;
+        Self::from_text(
+            text,
+            path.as_ref()
+                .to_str()
+                .expect("Error converting file path to string"),
+        )
     }
 }
 
@@ -100,7 +115,7 @@ mod tests {
             pattern_overrides: HashMap::default(),
         };
 
-        let parsed = OwnersFileConfig::from_text(input)?;
+        let parsed = OwnersFileConfig::from_text(input, "test data")?;
         assert_eq!(parsed, expected);
         Ok(())
     }
@@ -125,7 +140,7 @@ mod tests {
             pattern_overrides: HashMap::default(),
         };
 
-        let parsed = OwnersFileConfig::from_text(input)?;
+        let parsed = OwnersFileConfig::from_text(input, "test data")?;
         assert_eq!(parsed, expected);
         Ok(())
     }
@@ -161,7 +176,7 @@ mod tests {
             )]),
         };
 
-        let parsed = OwnersFileConfig::from_text(input)?;
+        let parsed = OwnersFileConfig::from_text(input, "test data")?;
         assert_eq!(parsed, expected);
         Ok(())
     }
