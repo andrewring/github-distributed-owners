@@ -45,6 +45,10 @@ impl TreeNode {
     }
 
     fn load_children_from_files(&mut self, directory: &Path) -> anyhow::Result<()> {
+        if directory.file_name().unwrap() == ".git" {
+            // Don't process git metadata
+            return Ok(());
+        }
         let mut current_loc_node = TreeNode::new(directory);
         let has_current_owners_file = current_loc_node.maybe_load_owners_file()?;
         for entry in fs::read_dir(directory)? {
@@ -200,6 +204,46 @@ mod tests {
                 },
                 ..TreeNode::default()
             }],
+        };
+
+        assert_eq!(tree, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn ignore_hidden_files() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/.git/OWNERS",
+            indoc! {"\
+                margaret.hamilton
+                katherine.johnson
+                "
+            },
+        )?;
+        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let expected = TreeNode {
+            path: temp_dir.path().to_path_buf(),
+            owners_config: OwnersFileConfig {
+                all_files: OwnersSet {
+                    owners: vec!["ada.lovelace".to_string(), "grace.hopper".to_string()]
+                        .into_iter()
+                        .collect::<HashSet<String>>(),
+                    ..OwnersSet::default()
+                },
+                ..OwnersFileConfig::default()
+            },
+            ..TreeNode::default()
         };
 
         assert_eq!(tree, expected);
