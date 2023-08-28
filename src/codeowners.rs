@@ -15,7 +15,25 @@ pub fn to_codeowners_string(codeowners: HashMap<String, HashSet<String>>) -> Str
                 // https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
                 line = "*".to_string();
             }
-            let owners = codeowners.get(pattern).unwrap().iter().sorted().join(" ");
+            let owners = codeowners
+                .get(pattern)
+                .unwrap()
+                .iter()
+                .sorted()
+                .map(|owner| {
+                    // CODEOWNERS syntax can take any of the following formats:
+                    // - @<username>
+                    // - user@email.tld
+                    // - @org/group
+                    // For non-email versions, we can safely protect against errors
+                    // by prepending an @
+                    if owner.contains('@') {
+                        owner.to_string()
+                    } else {
+                        format!("@{}", owner)
+                    }
+                })
+                .join(" ");
             if !owners.is_empty() {
                 line = format!("{} {}", line, owners);
             }
@@ -678,10 +696,10 @@ mod test {
         ]);
 
         let expected = indoc!(
-            "* ada.lovelace
-            /*.rs ada.lovelace margaret.hamilton
-            /foo/bar/ ada.lovelace grace.hopper
-            /foo/bar/*.rs katherine.johnson"
+            "* @ada.lovelace
+            /*.rs @ada.lovelace @margaret.hamilton
+            /foo/bar/ @ada.lovelace @grace.hopper
+            /foo/bar/*.rs @katherine.johnson"
         )
         .to_string();
 
@@ -726,10 +744,10 @@ mod test {
         ]);
 
         let expected = indoc!(
-            "* ada.lovelace
-            /*.rs ada.lovelace margaret.hamilton
-            /foo/bar/ ada.lovelace grace.hopper
-            /foo/bar/*.rs katherine.johnson"
+            "* @ada.lovelace
+            /*.rs @ada.lovelace @margaret.hamilton
+            /foo/bar/ @ada.lovelace @grace.hopper
+            /foo/bar/*.rs @katherine.johnson"
         )
         .to_string();
 
@@ -768,10 +786,10 @@ mod test {
         ]);
 
         let expected = indoc!(
-            "* ada.lovelace
-            /*.rs ada.lovelace margaret.hamilton
+            "* @ada.lovelace
+            /*.rs @ada.lovelace @margaret.hamilton
             /foo/bar/
-            /foo/bar/*.rs katherine.johnson"
+            /foo/bar/*.rs @katherine.johnson"
         )
         .to_string();
 
