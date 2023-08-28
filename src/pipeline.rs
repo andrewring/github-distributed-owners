@@ -9,6 +9,8 @@ const AUTO_GENERATED_NOTICE: &str = indoc! {"\
     ################################################################################
     #                             AUTO GENERATED FILE
     #                            Do Not Manually Update
+    #                              For details, see:
+    #        https://github.com/andrewring/github-distributed-owners#readme
     ################################################################################"
 };
 
@@ -71,6 +73,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
             / ada.lovelace grace.hopper
@@ -79,6 +83,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
             "
         };
@@ -123,6 +129,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
             / ada.lovelace grace.hopper
@@ -131,6 +139,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
             "
         };
@@ -179,6 +189,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
             / ada.lovelace grace.hopper
@@ -188,6 +200,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
             "
         };
@@ -237,6 +251,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
             /*.rs ada.lovelace grace.hopper
@@ -246,6 +262,8 @@ mod test {
             ################################################################################
             #                             AUTO GENERATED FILE
             #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
             "
         };
