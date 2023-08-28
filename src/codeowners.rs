@@ -9,6 +9,12 @@ pub fn to_codeowners_string(codeowners: HashMap<String, HashSet<String>>) -> Str
         .sorted()
         .map(|pattern| {
             let mut line = pattern.to_string();
+            if line == "/" {
+                // Unlike non-root directories, the repo root directory cannot be used as a catch all path.
+                // Instead, you have to use `*` at the root directory to achieve the same results.
+                // https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+                line = "*".to_string();
+            }
             let owners = codeowners.get(pattern).unwrap().iter().sorted().join(" ");
             if !owners.is_empty() {
                 line = format!("{} {}", line, owners);
@@ -16,7 +22,7 @@ pub fn to_codeowners_string(codeowners: HashMap<String, HashSet<String>>) -> Str
             line
         })
         // Don't include a root level owner line if no owners are specified
-        .filter(|line| line != "/")
+        .filter(|line| line != "*")
         .join("\n")
 }
 
@@ -672,7 +678,7 @@ mod test {
         ]);
 
         let expected = indoc!(
-            "/ ada.lovelace
+            "* ada.lovelace
             /*.rs ada.lovelace margaret.hamilton
             /foo/bar/ ada.lovelace grace.hopper
             /foo/bar/*.rs katherine.johnson"
@@ -720,7 +726,7 @@ mod test {
         ]);
 
         let expected = indoc!(
-            "/ ada.lovelace
+            "* ada.lovelace
             /*.rs ada.lovelace margaret.hamilton
             /foo/bar/ ada.lovelace grace.hopper
             /foo/bar/*.rs katherine.johnson"
@@ -762,7 +768,7 @@ mod test {
         ]);
 
         let expected = indoc!(
-            "/ ada.lovelace
+            "* ada.lovelace
             /*.rs ada.lovelace margaret.hamilton
             /foo/bar/
             /foo/bar/*.rs katherine.johnson"

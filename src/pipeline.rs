@@ -77,7 +77,7 @@ mod test {
             #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
-            / ada.lovelace grace.hopper
+            * ada.lovelace grace.hopper
             /*.rs ada.lovelace foo.bar grace.hopper
 
             ################################################################################
@@ -133,7 +133,7 @@ mod test {
             #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
-            / ada.lovelace grace.hopper
+            * ada.lovelace grace.hopper
             /subdir/foo/ ada.lovelace grace.hopper katherine.johnson margaret.hamilton
 
             ################################################################################
@@ -193,7 +193,7 @@ mod test {
             #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
-            / ada.lovelace grace.hopper
+            * ada.lovelace grace.hopper
             /subdir/foo/ ada.lovelace grace.hopper katherine.johnson margaret.hamilton
             /subdir/foo/*.rs grace.hopper
 
