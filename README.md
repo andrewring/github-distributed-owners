@@ -23,6 +23,16 @@ directory of the git repo
 github-distributed-owners --output-file .github/CODEOWNERS
 ```
 
+> :warning: The generated CODEOWNERS file (`/.github/CODEOWNERS by default) should be set to not have any owners if you
+> are enforcing no diff from running this tool. Failure to do so would result in whichever group has ownership of that
+> file needing to approve every OWNERS change, which partially defeats the purpose of this process.
+> This can be done by adding the following to the OWNERS file adjacent to the CODEOWNERS file, with no owners listed:
+>
+> ```shell
+> [CODEOWNERS]
+> set inherit = false
+> ```
+
 ### Pre-commit
 
 Example pre-commit config:
