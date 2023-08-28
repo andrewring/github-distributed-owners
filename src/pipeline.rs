@@ -77,8 +77,8 @@ mod test {
             #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
-            * ada.lovelace grace.hopper
-            /*.rs ada.lovelace foo.bar grace.hopper
+            * @ada.lovelace @grace.hopper
+            /*.rs @ada.lovelace @foo.bar @grace.hopper
 
             ################################################################################
             #                             AUTO GENERATED FILE
@@ -133,8 +133,8 @@ mod test {
             #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
-            * ada.lovelace grace.hopper
-            /subdir/foo/ ada.lovelace grace.hopper katherine.johnson margaret.hamilton
+            * @ada.lovelace @grace.hopper
+            /subdir/foo/ @ada.lovelace @grace.hopper @katherine.johnson @margaret.hamilton
 
             ################################################################################
             #                             AUTO GENERATED FILE
@@ -193,9 +193,9 @@ mod test {
             #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
-            * ada.lovelace grace.hopper
-            /subdir/foo/ ada.lovelace grace.hopper katherine.johnson margaret.hamilton
-            /subdir/foo/*.rs grace.hopper
+            * @ada.lovelace @grace.hopper
+            /subdir/foo/ @ada.lovelace @grace.hopper @katherine.johnson @margaret.hamilton
+            /subdir/foo/*.rs @grace.hopper
 
             ################################################################################
             #                             AUTO GENERATED FILE
@@ -255,9 +255,9 @@ mod test {
             #        https://github.com/andrewring/github-distributed-owners#readme
             ################################################################################
 
-            /*.rs ada.lovelace grace.hopper
-            /subdir/foo/ katherine.johnson margaret.hamilton
-            /subdir/foo/*.rs grace.hopper
+            /*.rs @ada.lovelace @grace.hopper
+            /subdir/foo/ @katherine.johnson @margaret.hamilton
+            /subdir/foo/*.rs @grace.hopper
 
             ################################################################################
             #                             AUTO GENERATED FILE
