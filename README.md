@@ -80,7 +80,7 @@ user4
 user5
 ```
 
-In the above, changes files under `/` or `/foo` can be approved by any of `user0`, `user1`, `user2`, `user3`.
+In the above, changes files under `/foo` can be approved by any of `user0`, `user1`, `user2`, `user3`.
 Changes to files under `/foo/bar` can only be approved by `user4`, and `user5`, however.
 
 ## File Patterns
