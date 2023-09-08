@@ -13,7 +13,7 @@ Create files named `OWNERS` in the directories containing newline separated refe
 
 ```shell
 github_username
-user@email.cmo
+user@email.com
 @group
 ```
 
