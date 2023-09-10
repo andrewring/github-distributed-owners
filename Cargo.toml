@@ -4,7 +4,13 @@ version = "0.1.5"
 edition = "2021"
 authors = ["Andrew Ring"]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+description = "A tool for auto generating GitHub compatible CODEOWNERS files from OWNERS files distributed through the file tree."
+readme = "README.md"
+homepage = "https://github.com/andrewring/github-distributed-owners"
+repository = "https://github.com/andrewring/github-distributed-owners"
+license = "MIT"
+keywords = ["cli", "devops", "github", "owners", "utility"]
+categories = ["command-line-utilities", "development-tools"]
 
 [dependencies]
 anyhow = "1.0.75"
