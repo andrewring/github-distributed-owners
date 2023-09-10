@@ -1,3 +1,4 @@
+use crate::allow_filter::AllowFilter;
 use crate::owners_file::OwnersFileConfig;
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -19,9 +20,12 @@ impl TreeNode {
         }
     }
 
-    pub fn maybe_load_owners_file(&mut self) -> anyhow::Result<bool> {
+    pub fn maybe_load_owners_file<F>(&mut self, allow_filter: &F) -> anyhow::Result<bool>
+    where
+        F: AllowFilter,
+    {
         let owners_file = self.path.join("OWNERS");
-        if !owners_file.exists() || !owners_file.is_file() {
+        if !owners_file.exists() || !owners_file.is_file() || !allow_filter.allowed(&owners_file) {
             return Ok(false);
         }
 
@@ -31,34 +35,45 @@ impl TreeNode {
         Ok(true)
     }
 
-    pub fn load_from_files<P: AsRef<Path>>(root: P) -> anyhow::Result<TreeNode> {
+    pub fn load_from_files<P, F>(root: P, allow_filter: &F) -> anyhow::Result<TreeNode>
+    where
+        P: AsRef<Path>,
+        F: AllowFilter,
+    {
         let mut root_node = TreeNode::new(&root);
-        root_node.maybe_load_owners_file()?;
+        root_node.maybe_load_owners_file(allow_filter)?;
         for entry in fs::read_dir(root)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
-                root_node.load_children_from_files(&path)?;
+                root_node.load_children_from_files(&path, allow_filter)?;
             }
         }
         Ok(root_node)
     }
 
-    fn load_children_from_files(&mut self, directory: &Path) -> anyhow::Result<()> {
+    fn load_children_from_files<F>(
+        &mut self,
+        directory: &Path,
+        allow_filter: &F,
+    ) -> anyhow::Result<()>
+    where
+        F: AllowFilter,
+    {
         if directory.file_name().unwrap() == ".git" {
             // Don't process git metadata
             return Ok(());
         }
         let mut current_loc_node = TreeNode::new(directory);
-        let has_current_owners_file = current_loc_node.maybe_load_owners_file()?;
+        let has_current_owners_file = current_loc_node.maybe_load_owners_file(allow_filter)?;
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
             let path = entry.path();
             if path.is_dir() {
                 if has_current_owners_file {
-                    current_loc_node.load_children_from_files(&path)?;
+                    current_loc_node.load_children_from_files(&path, allow_filter)?;
                 } else {
-                    self.load_children_from_files(&path)?;
+                    self.load_children_from_files(&path, allow_filter)?;
                 }
             }
         }
@@ -71,6 +86,7 @@ impl TreeNode {
 
 #[cfg(test)]
 mod tests {
+    use crate::allow_filter::FilterGitMetadata;
     use crate::owners_file::OwnersFileConfig;
     use crate::owners_set::OwnersSet;
     use crate::owners_tree::{OwnersTree, TreeNode};
@@ -78,6 +94,8 @@ mod tests {
     use indoc::indoc;
     use std::collections::HashSet;
     use tempfile::tempdir;
+
+    const ALLOW_ANY: FilterGitMetadata = FilterGitMetadata {};
 
     #[test]
     fn single_file_at_root() -> anyhow::Result<()> {
@@ -92,7 +110,7 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {
@@ -128,7 +146,7 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
             children: vec![TreeNode {
@@ -176,7 +194,7 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {
@@ -231,7 +249,7 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path())?;
+        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {

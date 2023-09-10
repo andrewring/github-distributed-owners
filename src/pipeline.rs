@@ -1,3 +1,4 @@
+use crate::allow_filter::AllowFilter;
 use crate::codeowners::{generate_codeowners, to_codeowners_string};
 use crate::owners_tree::OwnersTree;
 use indoc::indoc;
@@ -14,13 +15,17 @@ const AUTO_GENERATED_NOTICE: &str = indoc! {"\
     ################################################################################"
 };
 
-pub fn generate_codeowners_from_files(
+pub fn generate_codeowners_from_files<F>(
     repo_root: Option<PathBuf>,
     output_file: Option<PathBuf>,
     implicit_inherit: bool,
-) -> anyhow::Result<()> {
+    allow_filter: &F,
+) -> anyhow::Result<()>
+where
+    F: AllowFilter,
+{
     let root = repo_root.unwrap_or(std::env::current_dir()?);
-    let tree = OwnersTree::load_from_files(root)?;
+    let tree = OwnersTree::load_from_files(root, allow_filter)?;
 
     let codeowners = generate_codeowners(&tree, implicit_inherit)?;
     let mut codeowners_text = to_codeowners_string(codeowners);
@@ -47,11 +52,14 @@ pub fn generate_codeowners_from_files(
 
 #[cfg(test)]
 mod test {
+    use crate::allow_filter::FilterGitMetadata;
     use crate::pipeline::generate_codeowners_from_files;
     use crate::test_utils::create_test_file;
     use indoc::indoc;
     use std::fs;
     use tempfile::tempdir;
+
+    const ALLOW_ANY: FilterGitMetadata = FilterGitMetadata {};
 
     #[test]
     fn test_simple() -> anyhow::Result<()> {
@@ -93,7 +101,12 @@ mod test {
         let repo_root = Some(root_dir.to_path_buf());
         let implicit_inherit = true;
 
-        generate_codeowners_from_files(repo_root, Some(output_file.clone()), implicit_inherit)?;
+        generate_codeowners_from_files(
+            repo_root,
+            Some(output_file.clone()),
+            implicit_inherit,
+            &ALLOW_ANY,
+        )?;
 
         let generated_codeowners = fs::read_to_string(output_file)?;
 
@@ -149,7 +162,12 @@ mod test {
         let repo_root = Some(root_dir.to_path_buf());
         let implicit_inherit = true;
 
-        generate_codeowners_from_files(repo_root, Some(output_file.clone()), implicit_inherit)?;
+        generate_codeowners_from_files(
+            repo_root,
+            Some(output_file.clone()),
+            implicit_inherit,
+            &ALLOW_ANY,
+        )?;
 
         let generated_codeowners = fs::read_to_string(output_file)?;
 
@@ -210,7 +228,12 @@ mod test {
         let repo_root = Some(root_dir.to_path_buf());
         let implicit_inherit = true;
 
-        generate_codeowners_from_files(repo_root, Some(output_file.clone()), implicit_inherit)?;
+        generate_codeowners_from_files(
+            repo_root,
+            Some(output_file.clone()),
+            implicit_inherit,
+            &ALLOW_ANY,
+        )?;
 
         let generated_codeowners = fs::read_to_string(output_file)?;
 
@@ -272,7 +295,12 @@ mod test {
         let repo_root = Some(root_dir.to_path_buf());
         let implicit_inherit = true;
 
-        generate_codeowners_from_files(repo_root, Some(output_file.clone()), implicit_inherit)?;
+        generate_codeowners_from_files(
+            repo_root,
+            Some(output_file.clone()),
+            implicit_inherit,
+            &ALLOW_ANY,
+        )?;
 
         let generated_codeowners = fs::read_to_string(output_file)?;
 
