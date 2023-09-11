@@ -54,6 +54,14 @@ Note that GitHub will only respect CODEOWNERS files in a small number of locatio
 [the documentation](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#codeowners-file-location)
 for details.
 
+### Installation
+
+To install github-distributed-owners independently, simply run
+
+```shell
+cargo install github-distributed-owners --locked
+```
+
 ## Ownership Inheritance
 
 By default, owners of directories are automatically included as owners of subdirectories. The default behavior can be
