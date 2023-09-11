@@ -55,7 +55,10 @@ impl TreeNode {
         for entry in fs::read_dir(root)? {
             let entry = entry?;
             let path = entry.path();
-            if path.is_dir() {
+            if path.is_dir() &&
+                // Don't process file tree branches with no allowed files
+                allow_filter.allowed(&path)
+            {
                 root_node.load_children_from_files(&path, allow_filter)?;
             }
         }

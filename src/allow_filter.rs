@@ -2,6 +2,7 @@ use anyhow::anyhow;
 use itertools::Itertools;
 use log::trace;
 use std::collections::HashSet;
+use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
@@ -25,6 +26,7 @@ impl AllowFilter for FilterGitMetadata {
 
 pub struct AllowList {
     allowed_files: HashSet<PathBuf>,
+    _private: (), // Force use of AllowList::from outside this package
 }
 
 impl AllowFilter for AllowList {
@@ -45,12 +47,6 @@ impl AllowList {
         let git_files: HashSet<PathBuf> = String::from_utf8_lossy(&output.stdout)
             .lines()
             .map(PathBuf::from)
-            // When walking the file tree, paths are absolute.
-            // Canonicalize is needed to make these paths to match.
-            .map(|p| {
-                p.canonicalize()
-                    .expect("Error resolving file path from git ls-files")
-            })
             .collect();
         trace!(
             "Git files:{}",
@@ -60,10 +56,40 @@ impl AllowList {
                 .map(|p| format!("\n - {:?}", &p))
                 .join("")
         );
-        let allow_list = AllowList {
-            allowed_files: git_files,
-        };
-        Ok(allow_list)
+        AllowList::from(git_files, true)
+    }
+
+    pub fn from(paths: HashSet<PathBuf>, expand: bool) -> anyhow::Result<AllowList> {
+        let mut expanded_paths: HashSet<PathBuf> = HashSet::new();
+        for path in paths {
+            if path.file_name() != Some(OsStr::new("OWNERS")) {
+                trace!("Ignoring allowed file {:?}, not an OWNERS file", path);
+                continue;
+            }
+            // When walking the file tree, paths are absolute.
+            // Canonicalize is needed to make these paths to match.
+            expanded_paths.insert(if expand {
+                path.canonicalize()?
+            } else {
+                path.to_path_buf()
+            });
+            let mut parent = path.parent();
+            while let Some(dir) = parent {
+                if dir.as_os_str().is_empty() {
+                    break;
+                }
+                expanded_paths.insert(if expand {
+                    dir.canonicalize()?
+                } else {
+                    dir.to_path_buf()
+                });
+                parent = dir.parent();
+            }
+        }
+        Ok(AllowList {
+            allowed_files: expanded_paths,
+            _private: (),
+        })
     }
 }
 
@@ -86,17 +112,21 @@ mod test {
 
     #[test]
     fn allow_list() {
-        let allowed_files = ["Cargo.lock", "LICENSE", "OWNERS"]
+        let allowed_files = ["Cargo.lock", "LICENSE", "OWNERS", "src/OWNERS"]
             .iter()
             .map(PathBuf::from)
             .collect::<HashSet<PathBuf>>();
-        let filter = AllowList { allowed_files };
-        assert!(filter.allowed(Path::new("Cargo.lock")));
-        assert!(filter.allowed(Path::new("LICENSE")));
+        let filter = AllowList::from(allowed_files, false).unwrap();
         assert!(filter.allowed(Path::new("OWNERS")));
+        assert!(filter.allowed(Path::new("src/OWNERS")));
 
+        // Not OWNERS, so ignored
+        assert!(!filter.allowed(Path::new("Cargo.lock")));
+        assert!(!filter.allowed(Path::new("LICENSE")));
+
+        // Not included in original allowed_files
         assert!(!filter.allowed(Path::new(".git/hooks/pre-commit")));
+        assert!(!filter.allowed(Path::new("abc/OWNERS")));
         assert!(!filter.allowed(Path::new("src/main.rs")));
-        assert!(!filter.allowed(Path::new("src/OWNERS")));
     }
 }
