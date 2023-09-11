@@ -12,6 +12,14 @@ license = "MIT"
 keywords = ["cli", "devops", "github", "owners", "utility"]
 categories = ["command-line-utilities", "development-tools"]
 
+include = [
+    "LICENSE",
+    "README.md",
+    "Cargo.toml",
+    "Cargo.lock",
+    "**/*.rs"
+]
+
 [dependencies]
 anyhow = "1.0.75"
 clap = { version = "4.4.2", features = ["derive"] }
