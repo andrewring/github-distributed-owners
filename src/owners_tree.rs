@@ -1,5 +1,6 @@
 use crate::allow_filter::AllowFilter;
 use crate::owners_file::OwnersFileConfig;
+use log::{debug, trace};
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -25,10 +26,19 @@ impl TreeNode {
         F: AllowFilter,
     {
         let owners_file = self.path.join("OWNERS");
-        if !owners_file.exists() || !owners_file.is_file() || !allow_filter.allowed(&owners_file) {
+        if !owners_file.exists() || !owners_file.is_file() {
+            return Ok(false);
+        }
+        if !allow_filter.allowed(&owners_file) {
+            trace!(
+                "Skipping {:?} in {:?} due to filter",
+                owners_file,
+                self.path
+            );
             return Ok(false);
         }
 
+        debug!("Parsing {:?}", &owners_file);
         let owners_config = OwnersFileConfig::from_file(owners_file)?;
         self.owners_config = owners_config;
 

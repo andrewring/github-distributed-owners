@@ -1,5 +1,6 @@
 use crate::allow_filter::{AllowFilter, AllowList, FilterGitMetadata};
 use clap::Parser;
+use clap_verbosity_flag::Verbosity;
 use std::path::PathBuf;
 
 mod codeowners;
@@ -33,6 +34,9 @@ struct Args {
     /// Don't filter out files which are not managed by git.
     #[arg(long)]
     allow_non_git_files: bool,
+
+    #[command(flatten)]
+    verbose: Verbosity,
 }
 
 fn run_pipeline<F: AllowFilter>(args: Args, allow_filter: &F) -> anyhow::Result<()> {
@@ -47,6 +51,9 @@ fn run_pipeline<F: AllowFilter>(args: Args, allow_filter: &F) -> anyhow::Result<
 
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
+    env_logger::Builder::new()
+        .filter_level(args.verbose.log_level_filter())
+        .init();
 
     if args.allow_non_git_files {
         let allow_filter = FilterGitMetadata {};
