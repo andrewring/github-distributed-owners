@@ -39,7 +39,7 @@ Example pre-commit config:
 ```yaml
 repos:
   - repo: https://github.com/andrewring/github-distributed-owners
-    rev: v0.1.7
+    rev: v0.1.8
     hooks:
       - id: github-distributed-owners
 ```
@@ -56,7 +56,8 @@ for details.
 
 ### Installation
 
-To install github-distributed-owners independently, simply run
+To install github-distributed-owners independently, from [crates.io](https://crates.io/crates/github-distributed-owners),
+simply run
 
 ```shell
 cargo install github-distributed-owners --locked
