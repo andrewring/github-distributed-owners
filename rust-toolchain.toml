@@ -1,0 +1,4 @@
+[toolchain]
+# Version selected to provide compatibility with apt supplied
+# rustc from Ubuntu LTS versions.
+channel = "1.66.1"
