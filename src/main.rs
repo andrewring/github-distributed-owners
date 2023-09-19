@@ -13,29 +13,31 @@ mod allow_filter;
 #[cfg(test)]
 mod test_utils;
 
+const DEFAULT_IMPLICIT_INHERIT: bool = true;
+
 #[derive(Parser, Debug)]
-#[command(author, version, about, long_about)]
+#[clap(author, version, about)]
 /// A tool for auto generating GitHub compatible CODEOWNERS files from OWNERS files distributed
 /// through the file tree.
 struct Args {
     /// Root file in the repository from which to generate a CODEOWNERS file.
-    #[arg(short, long)]
+    #[clap(short, long)]
     repo_root: Option<PathBuf>,
 
     /// Output file to write the resulting CODEOWNERS contents into.
-    #[arg(short, long)]
+    #[clap(short, long)]
     output_file: Option<PathBuf>,
 
     /// Whether to inherit owners when inheritance is not specified. Default: true.
-    #[arg(short, long, default_value = "true")]
-    // NB: Option<bool> allows for --implicit-inherit [true|false], default means it's always Some
+    #[clap(short, long, parse(try_from_str))]
+    // NB: Option<bool> allows for --implicit-inherit [true|false]
     implicit_inherit: Option<bool>,
 
     /// Don't filter out files which are not managed by git.
-    #[arg(long)]
+    #[clap(long)]
     allow_non_git_files: bool,
 
-    #[command(flatten)]
+    #[clap(flatten)]
     verbose: Verbosity,
 }
 
@@ -43,8 +45,7 @@ fn run_pipeline<F: AllowFilter>(args: Args, allow_filter: &F) -> anyhow::Result<
     pipeline::generate_codeowners_from_files(
         args.repo_root,
         args.output_file,
-        args.implicit_inherit
-            .expect("--implicit-inherit must be set to either true or false"),
+        args.implicit_inherit.unwrap_or(DEFAULT_IMPLICIT_INHERIT),
         allow_filter,
     )
 }
