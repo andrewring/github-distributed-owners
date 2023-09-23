@@ -1,0 +1,42 @@
+body:
+  - type: markdown
+    attributes:
+      value: |
+        # Thank You For Sharing With Us!
+        Thank you for taking the time to share about your use with us. Whether you love it (:tada:) or hate it
+        (:disappointed:), feedback is how we improve.
+  - type: input
+    id: who
+    attributes:
+      label: Who are you?
+      description: Company, team, project, or person, who is using github-distributed-owners?
+      placeholder: Company, team, project, or person
+    validations:
+      required: true
+  - type: input
+    id: impression
+    attributes:
+      label: What do you think?
+      description: Do you love it, hate it, etc?
+      options:
+        - ":blue_heart: I love it"
+        - ":confused: It's complicated"
+        - ":sleepy: It's... fine. Meh"
+        - ":cold_sweat: I hate it"
+    validations:
+      required: true
+  - type: textarea
+    id: thoughts
+    attributes:
+      label: Thoughts
+      description: Care to elaborate?
+    validations:
+      required: false
+  - type: checkboxes
+    id: logo
+    attributes:
+      label: Can we display your logo as a user?
+      options:
+        - label: Yes
+    validations:
+      required: false

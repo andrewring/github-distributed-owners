@@ -7,6 +7,11 @@ property of allowing teams to edit their own OWNERS files, with approval require
 CODEOWNERS file supported by GitHub, you can either grant _everyone_ access to edit owners, or you can set a smaller
 group of reviewers for all teams to send changes to, each of which have problems.
 
+> [!NOTE]
+> If you're using github-distributed-owners, we want to hear from you!
+> Please [drop us a comment here](https://github.com/andrewring/github-distributed-owners/discussions/new?category=users).
+> :)
+
 ## Usage
 
 Create files named `OWNERS` in the directories containing newline separated references to users or groups.
@@ -23,9 +28,10 @@ directory of the git repo
 github-distributed-owners --output-file .github/CODEOWNERS
 ```
 
-> :warning: The generated CODEOWNERS file (`/.github/CODEOWNERS by default) should be set to not have any owners if you
-> are enforcing no diff from running this tool. Failure to do so would result in whichever group has ownership of that
-> file needing to approve every OWNERS change, which partially defeats the purpose of this process.
+> [!WARNING]
+> The generated CODEOWNERS file (`/.github/CODEOWNERS by default) should be set to not have any owners if you are
+> enforcing no diff from running this tool. Failure to do so would result in whichever group has ownership of that file
+> needing to approve every OWNERS change, which partially defeats the purpose of this process.
 > This can be done by adding the following to the OWNERS file adjacent to the CODEOWNERS file, with no owners listed:
 >
 > ```shell
