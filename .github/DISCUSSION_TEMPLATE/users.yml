@@ -13,7 +13,7 @@ body:
       placeholder: Company, team, project, or person
     validations:
       required: true
-  - type: input
+  - type: dropdown
     id: impression
     attributes:
       label: What do you think?
