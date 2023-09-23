@@ -37,6 +37,6 @@ body:
     attributes:
       label: Can we display your logo as a user?
       options:
-        - label: Yes
+        - label: "Yes"
     validations:
       required: false
