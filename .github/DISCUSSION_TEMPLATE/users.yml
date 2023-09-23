@@ -19,10 +19,10 @@ body:
       label: What do you think?
       description: Do you love it, hate it, etc?
       options:
-        - ":blue_heart: I love it"
-        - ":confused: It's complicated"
-        - ":sleepy: It's... fine. Meh"
-        - ":cold_sweat: I hate it"
+        - "💙 I love it"
+        - "😕 It's complicated"
+        - "🥱 It's... fine. Meh"
+        - "😰 I hate it"
     validations:
       required: true
   - type: textarea
