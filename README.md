@@ -60,6 +60,14 @@ Note that GitHub will only respect CODEOWNERS files in a small number of locatio
 [the documentation](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#codeowners-file-location)
 for details.
 
+You can further optimize the pre-commit behavior by filtering files processed with hook, like so:
+```yaml
+    hooks:
+      - id: github-distributed-owners
+        files: (.*/OWNERS|^.github/CODEOWNERS$)
+```
+NB: The CODEOWNERS path must be updated if specifying the `--output-file`, as above.
+
 ### Installation
 
 To install github-distributed-owners independently, from [crates.io](https://crates.io/crates/github-distributed-owners),
