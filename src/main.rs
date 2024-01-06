@@ -37,6 +37,13 @@ struct Args {
     #[clap(long)]
     allow_non_git_files: bool,
 
+    /// Add custom message to the auto-generated header/footer.
+    ///
+    /// This can be useful if you want to provide context for your specific project,
+    /// such as manual steps to regenerate the file.
+    #[clap(short, long)]
+    message: Option<String>,
+
     #[clap(flatten)]
     verbose: Verbosity,
 }
@@ -47,6 +54,7 @@ fn run_pipeline<F: AllowFilter>(args: Args, allow_filter: &F) -> anyhow::Result<
         args.output_file,
         args.implicit_inherit.unwrap_or(DEFAULT_IMPLICIT_INHERIT),
         allow_filter,
+        args.message,
     )
 }
 
