@@ -1,6 +1,6 @@
 use anyhow::anyhow;
 use itertools::Itertools;
-use log::trace;
+use log::{trace, warn};
 use std::collections::HashSet;
 use std::ffi::OsStr;
 use std::path::{Path, PathBuf};
@@ -47,6 +47,14 @@ impl AllowList {
         let git_files: HashSet<PathBuf> = String::from_utf8_lossy(&output.stdout)
             .lines()
             .map(PathBuf::from)
+            // If an OWNERS file has been deleted, but the deletion has not yet been staged,
+            // an error would be thrown without filtering them out.
+            .filter(|path| if !path.exists() {
+                warn!("Missing expected git file at `{}`, possibly the deletion has not been staged?", path.display());
+                false
+            } else {
+                true
+            })
             .collect();
         trace!(
             "Git files:{}",
