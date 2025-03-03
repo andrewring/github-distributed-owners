@@ -4,7 +4,7 @@ version = "0.1.9"
 edition = "2021"
 # Version selected to provide compatibility with apt supplied
 # rustc from Ubuntu LTS versions.
-rust-version = "1.66.1"
+rust-version = "1.70.0"
 authors = ["Andrew Ring"]
 
 description = "A tool for auto generating GitHub compatible CODEOWNERS files from OWNERS files distributed through the file tree."
