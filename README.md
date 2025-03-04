@@ -10,8 +10,8 @@ group of reviewers for all teams to send changes to, each of which have problems
 
 > [!NOTE]
 > If you're using github-distributed-owners, we want to hear from you!
->
-Please [drop us a comment here](https://github.com/andrewring/github-distributed-owners/discussions/new?category=users).
+> Please
+> [drop us a comment here](https://github.com/andrewring/github-distributed-owners/discussions/new?category=users).
 > :)
 
 ## Usage
