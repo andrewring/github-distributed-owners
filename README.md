@@ -1,4 +1,5 @@
 # github-distributed-owners
+
 A tool for auto generating GitHub compatible CODEOWNERS files from OWNERS files distributed through the file tree.
 
 Distributing OWNERS configuration throughout the file tree makes it easier to find the appropriate people/teams who own
@@ -9,7 +10,8 @@ group of reviewers for all teams to send changes to, each of which have problems
 
 > [!NOTE]
 > If you're using github-distributed-owners, we want to hear from you!
-> Please [drop us a comment here](https://github.com/andrewring/github-distributed-owners/discussions/new?category=users).
+> Please
+> [drop us a comment here](https://github.com/andrewring/github-distributed-owners/discussions/new?category=users).
 > :)
 
 ## Usage
@@ -24,6 +26,7 @@ user@email.com
 
 Once these are in place, you can generate a GitHub compatible CODEOWNERS file by running the following in the root
 directory of the git repo
+
 ```shell
 github-distributed-owners --output-file .github/CODEOWNERS
 ```
@@ -42,35 +45,41 @@ github-distributed-owners --output-file .github/CODEOWNERS
 ### Pre-commit
 
 Example pre-commit config:
+
 ```yaml
 repos:
   - repo: https://github.com/andrewring/github-distributed-owners
-    rev: v0.1.9
+    rev: v0.1.10
     hooks:
       - id: github-distributed-owners
 ```
 
 The default CODEOWNERS location is `.github/CODEOWNERS`. This can be changed via
+
 ```yaml
     hooks:
       - id: github-distributed-owners
-        args: ["--output-file=<FILE_PATH>"]
+        args: [ "--output-file=<FILE_PATH>" ]
 ```
+
 Note that GitHub will only respect CODEOWNERS files in a small number of locations. See
 [the documentation](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#codeowners-file-location)
 for details.
 
 You can further optimize the pre-commit behavior by filtering files processed with hook, like so:
+
 ```yaml
     hooks:
       - id: github-distributed-owners
         files: (.*/OWNERS|^.github/CODEOWNERS$)
 ```
+
 NB: The CODEOWNERS path must be updated if specifying the `--output-file`, as above.
 
 ### Installation
 
-To install github-distributed-owners independently, from [crates.io](https://crates.io/crates/github-distributed-owners),
+To install github-distributed-owners independently,
+from [crates.io](https://crates.io/crates/github-distributed-owners),
 simply run
 
 ```shell
@@ -84,6 +93,7 @@ changed by setting `--implicit-inherit false`. For individual directories and pa
 the syntax `set inherit = false`.
 
 ### Inheritance Example
+
 ```shell
 # /OWNERS
 user0
@@ -113,6 +123,7 @@ can specify patterns within a directory, as well. This is done by providing the 
 `[*.rs]`, with owners and set values after.
 
 Example:
+
 ```shell
 # Directory level owners
 user0
