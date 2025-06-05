@@ -7,7 +7,7 @@ use std::fs;
 use std::path::Path;
 use std::path::PathBuf;
 
-#[derive(PartialEq, Debug, Default, Eq)]
+#[derive(PartialEq, Debug, Default)]
 pub struct OwnersFileConfig {
     pub all_files: OwnersSet,
     pub pattern_overrides: HashMap<String, OwnersSet>,

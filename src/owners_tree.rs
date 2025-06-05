@@ -1,28 +1,15 @@
 use crate::allow_filter::AllowFilter;
 use crate::owners_file::OwnersFileConfig;
 use log::{debug, trace};
-use std::cmp::Ordering;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(PartialEq, Debug, Default, Eq)]
+#[derive(PartialEq, Debug, Default)]
 pub struct TreeNode {
     pub path: PathBuf,
     pub repo_base: PathBuf,
     pub owners_config: OwnersFileConfig,
     pub children: Vec<TreeNode>,
-}
-
-impl Ord for TreeNode {
-    fn cmp(&self, other: &Self) -> Ordering {
-        self.path.cmp(&other.path)
-    }
-}
-
-impl PartialOrd for TreeNode {
-    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
-        Some(self.cmp(other))
-    }
 }
 
 pub type OwnersTree = TreeNode;
@@ -423,8 +410,8 @@ mod tests {
             ],
         };
 
-        tree.children.sort();
-        expected.children.sort();
+        tree.children.sort_by_key(|c| c.path.clone());
+        expected.children.sort_by_key(|c| c.path.clone());
 
         assert_eq!(tree, expected);
         Ok(())
