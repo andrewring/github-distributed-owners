@@ -5,70 +5,123 @@ use regex::Regex;
 use std::collections::HashMap;
 use std::fs;
 use std::path::Path;
+use std::path::PathBuf;
 
-#[derive(PartialEq, Debug, Default)]
+#[derive(PartialEq, Debug, Default, Eq)]
 pub struct OwnersFileConfig {
     pub all_files: OwnersSet,
     pub pattern_overrides: HashMap<String, OwnersSet>,
 }
 
 impl OwnersFileConfig {
-    pub fn from_text<S0: AsRef<str>, S1: AsRef<str>>(
-        text: S0,
-        source: S1,
+    pub fn from_file<P0: AsRef<Path>, P1: AsRef<Path>>(
+        path: P0,
+        repo_base: P1,
     ) -> anyhow::Result<OwnersFileConfig> {
-        let text = text.as_ref();
-        let mut config = OwnersFileConfig::default();
-        let mut current_set = &mut config.all_files;
+        let path_ref = path.as_ref();
+        let text = fs::read_to_string(path_ref)?;
+        Self::from_text(&text, path.as_ref(), repo_base.as_ref())
+    }
 
-        for (line_number, line) in text.lines().enumerate() {
-            let line = clean_line(line);
+    fn from_text<S: AsRef<str>, P0: AsRef<Path>, P1: AsRef<Path>>(
+        text: S,
+        path: P0,
+        repo_base: P1,
+    ) -> anyhow::Result<OwnersFileConfig> {
+        let mut config = OwnersFileConfig::default();
+        Self::parse_text(
+            &mut config,
+            text.as_ref(),
+            path.as_ref(),
+            repo_base.as_ref(),
+        )?;
+        Ok(config)
+    }
+
+    fn parse_text<P0: AsRef<Path>, P1: AsRef<Path>>(
+        config: &mut OwnersFileConfig,
+        text: &str,
+        path: P0,
+        repo_base: P1,
+    ) -> anyhow::Result<()> {
+        // `active_pattern_key` tracks the current context.
+        // `None`: Modifying `config.all_files`.
+        // `Some(key)`: Modifying `config.pattern_overrides` for the given key.
+        let mut active_pattern_key: Option<String> = None;
+        let source = path
+            .as_ref()
+            .to_str()
+            .expect("Error converting file path to string");
+
+        for (i, raw_line) in text.lines().enumerate() {
+            let line = clean_line(raw_line);
             if line.is_empty() {
                 continue;
             }
-            let is_set_line = current_set.maybe_process_set(line).map_err(|error| {
-                anyhow!(
-                    "{} Encountered at {}:{}",
-                    error.to_string(),
-                    source.as_ref(),
-                    line_number
-                )
-            })?;
+            let line_number = i + 1;
+
+            if let Some(include_file) = maybe_get_include(line)
+                .map_err(|error| anyhow!("{} Found at {}:{}", error, source, line_number))?
+            {
+                if active_pattern_key.is_some() {
+                    return Err(anyhow!(
+                        "include is not allowed in path-specific sections. Found at {}:{}",
+                        source,
+                        line_number
+                    ));
+                }
+
+                let include_path =
+                    resolve_include_path(repo_base.as_ref(), path.as_ref(), &include_file)
+                        .map_err(|error| {
+                            anyhow!("{} Found at {}:{}", error, source, line_number)
+                        })?;
+
+                let include_text = fs::read_to_string(&include_path).map_err(|error| {
+                    anyhow!(
+                        "{} Found at {}:{}",
+                        error,
+                        include_path.display(),
+                        line_number
+                    )
+                })?;
+                Self::parse_text(config, &include_text, &include_path, repo_base.as_ref())?;
+                continue;
+            }
+
+            // We scope this borrow to ensure we don't hold onto the mutable reference longer than necessary,
+            // since it can cause issues with recursively borrowing the `config` object above.
+            let current_set: &mut OwnersSet = {
+                if let Some(ref key) = active_pattern_key {
+                    config.pattern_overrides.entry(key.clone()).or_default()
+                } else {
+                    &mut config.all_files
+                }
+            };
+
+            let is_set_line = current_set
+                .maybe_process_set(line)
+                .map_err(|error| anyhow!("{} Encountered at {}:{}", error, source, line_number))?;
             if is_set_line {
                 continue;
             }
+
             if let Some(new_file_pattern) = maybe_get_file_pattern(line) {
-                config
-                    .pattern_overrides
-                    .insert(new_file_pattern.clone(), OwnersSet::default());
-                current_set = config
-                    .pattern_overrides
-                    .get_mut(new_file_pattern.as_str())
-                    .unwrap();
+                active_pattern_key = Some(new_file_pattern);
                 continue;
             }
+
             if line.contains(char::is_whitespace) {
                 return Err(anyhow!(
                     "Invalid user/group '{}' cannot contain whitespace. Found at {}:{}",
                     line,
-                    source.as_ref(),
+                    source,
                     line_number
                 ));
             }
             current_set.owners.insert(line.to_string());
         }
-
-        Ok(config)
-    }
-
-    pub fn from_file<P: AsRef<Path>>(path: P) -> anyhow::Result<OwnersFileConfig> {
-        let text = fs::read_to_string(&path)?;
-        Self::from_text(
-            text,
-            path.as_ref()
-                .to_str()
-                .expect("Error converting file path to string"),
-        )
+        Ok(())
     }
 }
 
@@ -77,6 +130,7 @@ fn clean_line(line: &str) -> &str {
     line.find('#').map(|i| &line[..i]).unwrap_or(line).trim()
 }
 
+/// Parses a file pattern line, e.g., `[*.rs]`.
 fn maybe_get_file_pattern(line: &str) -> Option<String> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"^\s*\[\s*(?<pattern>\S+)\s*]\s*$").unwrap();
@@ -89,9 +143,67 @@ fn maybe_get_file_pattern(line: &str) -> Option<String> {
     }
 }
 
+/// Parses an include directive, e.g., `include path/to/another/OWNERS`.
+fn maybe_get_include(line: &str) -> anyhow::Result<Option<String>> {
+    lazy_static! {
+        // Ensures the path is non-empty and doesn't contain whitespace.
+        static ref RE: Regex = Regex::new(r"^\s*include\s+(?<path>\S+)\s*$").unwrap();
+        static ref MALFORMED_RE: Regex = Regex::new(r"^\s*include\s*$").unwrap();
+    }
+    if let Some(captures) = RE.captures(line) {
+        let path = captures["path"].to_string();
+        dbg!(captures["path"].to_string());
+        if path.is_empty() {
+            return Err(anyhow!("Invalid include. Expected non-empty include path."));
+        }
+
+        Ok(Some(path))
+    } else if MALFORMED_RE.is_match(line) {
+        Err(anyhow!(
+            "Invalid include format '{}'. Expected 'include <path>'.",
+            line,
+        ))
+    } else if line.to_lowercase().starts_with("include ") {
+        Err(anyhow!(
+            "Invalid include format '{}'. Expected 'include <path>'.",
+            line,
+        ))
+    } else {
+        Ok(None)
+    }
+}
+
+fn resolve_include_path<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
+    repo_base: P0,
+    current_path: P1,
+    include_path: P2,
+) -> anyhow::Result<PathBuf> {
+    let repo_base_path = repo_base.as_ref();
+    let current_path_ref = current_path.as_ref();
+    let include_path_ref = include_path.as_ref();
+
+    let current_dir = current_path_ref.parent().ok_or_else(|| {
+        anyhow::anyhow!(
+            "current_path has no parent directory: {:?}",
+            current_path_ref
+        )
+    })?;
+
+    if include_path_ref.is_absolute() {
+        return Ok(repo_base_path.join(
+            include_path_ref
+                .strip_prefix("/")
+                .or_else(|_| include_path_ref.strip_prefix("\\"))
+                .unwrap_or(include_path_ref),
+        ));
+    } else {
+        return Ok(current_dir.join(include_path_ref));
+    };
+}
+
 #[cfg(test)]
 mod tests {
-    use crate::owners_file::{maybe_get_file_pattern, OwnersFileConfig};
+    use crate::owners_file::{maybe_get_file_pattern, maybe_get_include, OwnersFileConfig};
     use crate::owners_set::OwnersSet;
     use indoc::indoc;
     use std::collections::{HashMap, HashSet};
@@ -115,7 +227,7 @@ mod tests {
             pattern_overrides: HashMap::default(),
         };
 
-        let parsed = OwnersFileConfig::from_text(input, "test data")?;
+        let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
         assert_eq!(parsed, expected);
         Ok(())
     }
@@ -140,7 +252,7 @@ mod tests {
             pattern_overrides: HashMap::default(),
         };
 
-        let parsed = OwnersFileConfig::from_text(input, "test data")?;
+        let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
         assert_eq!(parsed, expected);
         Ok(())
     }
@@ -176,7 +288,7 @@ mod tests {
             )]),
         };
 
-        let parsed = OwnersFileConfig::from_text(input, "test data")?;
+        let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
         assert_eq!(parsed, expected);
         Ok(())
     }
@@ -192,5 +304,22 @@ mod tests {
         assert_eq!(maybe_get_file_pattern("ada.lovelace"), None);
         assert_eq!(maybe_get_file_pattern(""), None);
         assert_eq!(maybe_get_file_pattern("set inherit = false"), None);
+    }
+
+    #[test]
+    fn test_maybe_get_include() -> anyhow::Result<()> {
+        assert_eq!(
+            maybe_get_include("include foo/bar.owners")?,
+            Some("foo/bar.owners".to_string())
+        );
+        assert_eq!(
+            maybe_get_include("  include   my_path   ")?,
+            Some("my_path".to_string())
+        );
+        assert!(maybe_get_include("include").is_err());
+        assert!(maybe_get_include("include ").is_err());
+        assert!(maybe_get_include("include path with spaces").is_err()); // Regex `\S+` handles this.
+        assert_eq!(maybe_get_include("not an include")?, None);
+        Ok(())
     }
 }

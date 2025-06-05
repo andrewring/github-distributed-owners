@@ -3,7 +3,7 @@ use lazy_static::lazy_static;
 use regex::Regex;
 use std::collections::HashSet;
 
-#[derive(PartialEq, Debug, Default)]
+#[derive(PartialEq, Debug, Default, Eq)]
 pub struct OwnersSet {
     pub inherit: Option<bool>,
     pub owners: HashSet<String>,

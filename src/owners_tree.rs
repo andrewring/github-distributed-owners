@@ -1,22 +1,37 @@
 use crate::allow_filter::AllowFilter;
 use crate::owners_file::OwnersFileConfig;
 use log::{debug, trace};
+use std::cmp::Ordering;
 use std::fs;
 use std::path::{Path, PathBuf};
 
-#[derive(PartialEq, Debug, Default)]
+#[derive(PartialEq, Debug, Default, Eq)]
 pub struct TreeNode {
     pub path: PathBuf,
+    pub repo_base: PathBuf,
     pub owners_config: OwnersFileConfig,
     pub children: Vec<TreeNode>,
+}
+
+impl Ord for TreeNode {
+    fn cmp(&self, other: &Self) -> Ordering {
+        self.path.cmp(&other.path)
+    }
+}
+
+impl PartialOrd for TreeNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        Some(self.cmp(other))
+    }
 }
 
 pub type OwnersTree = TreeNode;
 
 impl TreeNode {
-    pub fn new<P: AsRef<Path>>(path: P) -> TreeNode {
+    pub fn new<P0: AsRef<Path>, P1: AsRef<Path>>(path: P0, repo_base: P1) -> TreeNode {
         TreeNode {
             path: path.as_ref().to_path_buf(),
+            repo_base: repo_base.as_ref().to_path_buf(),
             ..TreeNode::default()
         }
     }
@@ -39,7 +54,7 @@ impl TreeNode {
         }
 
         debug!("Parsing {:?}", &owners_file);
-        let owners_config = OwnersFileConfig::from_file(owners_file)?;
+        let owners_config = OwnersFileConfig::from_file(owners_file, &self.repo_base)?;
         self.owners_config = owners_config;
 
         Ok(true)
@@ -50,7 +65,7 @@ impl TreeNode {
         P: AsRef<Path>,
         F: AllowFilter,
     {
-        let mut root_node = TreeNode::new(&root);
+        let mut root_node = TreeNode::new(&root, &root);
         root_node.maybe_load_owners_file(allow_filter)?;
         for entry in fs::read_dir(root)? {
             let entry = entry?;
@@ -77,7 +92,7 @@ impl TreeNode {
             // Don't process git metadata
             return Ok(());
         }
-        let mut current_loc_node = TreeNode::new(directory);
+        let mut current_loc_node = TreeNode::new(directory, &self.repo_base);
         let has_current_owners_file = current_loc_node.maybe_load_owners_file(allow_filter)?;
         for entry in fs::read_dir(directory)? {
             let entry = entry?;
@@ -105,6 +120,7 @@ mod tests {
     use crate::owners_tree::{OwnersTree, TreeNode};
     use crate::test_utils::create_test_file;
     use indoc::indoc;
+    use std::collections::HashMap;
     use std::collections::HashSet;
     use tempfile::tempdir;
 
@@ -126,6 +142,7 @@ mod tests {
         let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
+            repo_base: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     owners: vec![
@@ -162,8 +179,10 @@ mod tests {
         let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
+            repo_base: temp_dir.path().to_path_buf(),
             children: vec![TreeNode {
                 path: temp_dir.path().join("subdir").to_path_buf(),
+                repo_base: temp_dir.path().to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         owners: vec![
@@ -210,6 +229,7 @@ mod tests {
         let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
+            repo_base: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     owners: vec!["ada.lovelace".to_string(), "grace.hopper".to_string()]
@@ -221,6 +241,7 @@ mod tests {
             },
             children: vec![TreeNode {
                 path: temp_dir.path().join("subdir/foo").to_path_buf(),
+                repo_base: temp_dir.path().to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         owners: vec![
@@ -265,6 +286,7 @@ mod tests {
         let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
         let expected = TreeNode {
             path: temp_dir.path().to_path_buf(),
+            repo_base: temp_dir.path().to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     owners: vec!["ada.lovelace".to_string(), "grace.hopper".to_string()]
@@ -276,6 +298,133 @@ mod tests {
             },
             ..TreeNode::default()
         };
+
+        assert_eq!(tree, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn included_file() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/foo/OWNERS",
+            indoc! {"\
+                margaret.hamilton
+                katherine.johnson
+
+                include /subdir/bar/OWNERS
+                include ../baz/OWNERS
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/bar/OWNERS",
+            indoc! {"\
+                mary.jackson
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/baz/OWNERS",
+            indoc! {"\
+                [*.py]
+                alan.turing
+                "
+            },
+        )?;
+        let mut tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
+        let mut expected = TreeNode {
+            path: temp_dir.path().to_path_buf(),
+            repo_base: temp_dir.path().to_path_buf(),
+            owners_config: OwnersFileConfig {
+                all_files: OwnersSet {
+                    owners: vec!["ada.lovelace".to_string(), "grace.hopper".to_string()]
+                        .into_iter()
+                        .collect::<HashSet<String>>(),
+                    ..OwnersSet::default()
+                },
+                ..OwnersFileConfig::default()
+            },
+            children: vec![
+                TreeNode {
+                    path: temp_dir.path().join("subdir/foo").to_path_buf(),
+                    repo_base: temp_dir.path().to_path_buf(),
+                    owners_config: OwnersFileConfig {
+                        all_files: OwnersSet {
+                            owners: vec![
+                                "margaret.hamilton".to_string(),
+                                "katherine.johnson".to_string(),
+                                "mary.jackson".to_string(),
+                            ]
+                            .into_iter()
+                            .collect::<HashSet<String>>(),
+                            ..OwnersSet::default()
+                        },
+                        pattern_overrides: HashMap::from([(
+                            "*.py".to_string(),
+                            OwnersSet {
+                                owners: vec!["alan.turing".to_string()]
+                                    .into_iter()
+                                    .collect::<HashSet<String>>(),
+                                ..OwnersSet::default()
+                            },
+                        )]),
+                        ..OwnersFileConfig::default()
+                    },
+                    ..TreeNode::default()
+                },
+                TreeNode {
+                    path: temp_dir.path().join("subdir/bar").to_path_buf(),
+                    repo_base: temp_dir.path().to_path_buf(),
+                    owners_config: OwnersFileConfig {
+                        all_files: OwnersSet {
+                            owners: vec!["mary.jackson".to_string()]
+                                .into_iter()
+                                .collect::<HashSet<String>>(),
+                            ..OwnersSet::default()
+                        },
+                        ..OwnersFileConfig::default()
+                    },
+                    ..TreeNode::default()
+                },
+                TreeNode {
+                    path: temp_dir.path().join("subdir/baz").to_path_buf(),
+                    repo_base: temp_dir.path().to_path_buf(),
+                    owners_config: OwnersFileConfig {
+                        all_files: OwnersSet {
+                            owners: vec![].into_iter().collect::<HashSet<String>>(),
+                            ..OwnersSet::default()
+                        },
+                        pattern_overrides: HashMap::from([(
+                            "*.py".to_string(),
+                            OwnersSet {
+                                owners: vec!["alan.turing".to_string()]
+                                    .into_iter()
+                                    .collect::<HashSet<String>>(),
+                                ..OwnersSet::default()
+                            },
+                        )]),
+                        ..OwnersFileConfig::default()
+                    },
+                    ..TreeNode::default()
+                },
+            ],
+        };
+
+        tree.children.sort();
+        expected.children.sort();
 
         assert_eq!(tree, expected);
         Ok(())
