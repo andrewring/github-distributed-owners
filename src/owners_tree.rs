@@ -17,8 +17,16 @@ pub type OwnersTree = TreeNode;
 impl TreeNode {
     pub fn new<P0: AsRef<Path>, P1: AsRef<Path>>(path: P0, repo_base: P1) -> TreeNode {
         TreeNode {
-            path: path.as_ref().to_path_buf(),
-            repo_base: repo_base.as_ref().to_path_buf(),
+            path: path
+                .as_ref()
+                .to_path_buf()
+                .canonicalize()
+                .expect("Failed to canonicalize path"),
+            repo_base: repo_base
+                .as_ref()
+                .to_path_buf()
+                .canonicalize()
+                .expect("Failed to canonicalize path"),
             ..TreeNode::default()
         }
     }
@@ -126,10 +134,11 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
+        let temp_dir_path = temp_dir.path().canonicalize()?;
+        let tree = OwnersTree::load_from_files(&temp_dir_path, &ALLOW_ANY)?;
         let expected = TreeNode {
-            path: temp_dir.path().to_path_buf(),
-            repo_base: temp_dir.path().to_path_buf(),
+            path: temp_dir_path.to_path_buf(),
+            repo_base: temp_dir_path.to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     owners: vec![
@@ -163,13 +172,14 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
+        let temp_dir_path = temp_dir.path().canonicalize()?;
+        let tree = OwnersTree::load_from_files(&temp_dir_path, &ALLOW_ANY)?;
         let expected = TreeNode {
-            path: temp_dir.path().to_path_buf(),
-            repo_base: temp_dir.path().to_path_buf(),
+            path: temp_dir_path.to_path_buf(),
+            repo_base: temp_dir_path.to_path_buf(),
             children: vec![TreeNode {
-                path: temp_dir.path().join("subdir").to_path_buf(),
-                repo_base: temp_dir.path().to_path_buf(),
+                path: temp_dir_path.join("subdir").to_path_buf(),
+                repo_base: temp_dir_path.to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         owners: vec![
@@ -213,10 +223,11 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
+        let temp_dir_path = temp_dir.path().canonicalize()?;
+        let tree = OwnersTree::load_from_files(&temp_dir_path, &ALLOW_ANY)?;
         let expected = TreeNode {
-            path: temp_dir.path().to_path_buf(),
-            repo_base: temp_dir.path().to_path_buf(),
+            path: temp_dir_path.to_path_buf(),
+            repo_base: temp_dir_path.to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     owners: vec!["ada.lovelace".to_string(), "grace.hopper".to_string()]
@@ -227,8 +238,8 @@ mod tests {
                 ..OwnersFileConfig::default()
             },
             children: vec![TreeNode {
-                path: temp_dir.path().join("subdir/foo").to_path_buf(),
-                repo_base: temp_dir.path().to_path_buf(),
+                path: temp_dir_path.join("subdir/foo").to_path_buf(),
+                repo_base: temp_dir_path.to_path_buf(),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         owners: vec![
@@ -270,10 +281,11 @@ mod tests {
                 "
             },
         )?;
-        let tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
+        let temp_dir_path = temp_dir.path().canonicalize()?;
+        let tree = OwnersTree::load_from_files(&temp_dir_path, &ALLOW_ANY)?;
         let expected = TreeNode {
-            path: temp_dir.path().to_path_buf(),
-            repo_base: temp_dir.path().to_path_buf(),
+            path: temp_dir_path.to_path_buf(),
+            repo_base: temp_dir_path.to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     owners: vec!["ada.lovelace".to_string(), "grace.hopper".to_string()]
@@ -331,10 +343,11 @@ mod tests {
                 "
             },
         )?;
-        let mut tree = OwnersTree::load_from_files(temp_dir.path(), &ALLOW_ANY)?;
+        let temp_dir_path = temp_dir.path().canonicalize()?;
+        let mut tree = OwnersTree::load_from_files(&temp_dir_path, &ALLOW_ANY)?;
         let mut expected = TreeNode {
-            path: temp_dir.path().to_path_buf(),
-            repo_base: temp_dir.path().to_path_buf(),
+            path: temp_dir_path.to_path_buf(),
+            repo_base: temp_dir_path.to_path_buf(),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     owners: vec!["ada.lovelace".to_string(), "grace.hopper".to_string()]
@@ -346,8 +359,8 @@ mod tests {
             },
             children: vec![
                 TreeNode {
-                    path: temp_dir.path().join("subdir/foo").to_path_buf(),
-                    repo_base: temp_dir.path().to_path_buf(),
+                    path: temp_dir_path.join("subdir/foo").to_path_buf(),
+                    repo_base: temp_dir_path.to_path_buf(),
                     owners_config: OwnersFileConfig {
                         all_files: OwnersSet {
                             owners: vec![
@@ -373,8 +386,8 @@ mod tests {
                     ..TreeNode::default()
                 },
                 TreeNode {
-                    path: temp_dir.path().join("subdir/bar").to_path_buf(),
-                    repo_base: temp_dir.path().to_path_buf(),
+                    path: temp_dir_path.join("subdir/bar").to_path_buf(),
+                    repo_base: temp_dir_path.to_path_buf(),
                     owners_config: OwnersFileConfig {
                         all_files: OwnersSet {
                             owners: vec!["mary.jackson".to_string()]
@@ -387,8 +400,8 @@ mod tests {
                     ..TreeNode::default()
                 },
                 TreeNode {
-                    path: temp_dir.path().join("subdir/baz").to_path_buf(),
-                    repo_base: temp_dir.path().to_path_buf(),
+                    path: temp_dir_path.join("subdir/baz").to_path_buf(),
+                    repo_base: temp_dir_path.to_path_buf(),
                     owners_config: OwnersFileConfig {
                         all_files: OwnersSet {
                             owners: vec![].into_iter().collect::<HashSet<String>>(),
@@ -414,6 +427,42 @@ mod tests {
         expected.children.sort_by_key(|c| c.path.clone());
 
         assert_eq!(tree, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn included_file_circular_include() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/foo/OWNERS",
+            indoc! {"\
+                include /subdir/bar/OWNERS
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/bar/OWNERS",
+            indoc! {"\
+                include /subdir/bar/OWNERS
+                "
+            },
+        )?;
+
+        let temp_dir_path = temp_dir.path().canonicalize()?;
+        let tree = OwnersTree::load_from_files(&temp_dir_path, &ALLOW_ANY);
+
+        assert!(tree.is_err());
         Ok(())
     }
 }

@@ -34,6 +34,7 @@ impl OwnersFileConfig {
             text.as_ref(),
             path.as_ref(),
             repo_base.as_ref(),
+            (&mut HashMap::new()).into(),
         )?;
         Ok(config)
     }
@@ -43,6 +44,7 @@ impl OwnersFileConfig {
         text: &str,
         path: P0,
         repo_base: P1,
+        seen_owners: &mut HashMap<PathBuf, Option<PathBuf>>,
     ) -> anyhow::Result<()> {
         // `active_pattern_key` tracks the current context.
         // `None`: Modifying `config.all_files`.
@@ -52,6 +54,10 @@ impl OwnersFileConfig {
             .as_ref()
             .to_str()
             .expect("Error converting file path to string");
+
+        if seen_owners.is_empty() {
+            seen_owners.insert(path.as_ref().to_path_buf(), None);
+        }
 
         for (i, raw_line) in text.lines().enumerate() {
             let line = clean_line(raw_line);
@@ -85,7 +91,18 @@ impl OwnersFileConfig {
                         line_number
                     )
                 })?;
-                Self::parse_text(config, &include_text, &include_path, repo_base.as_ref())?;
+
+                if seen_owners.contains_key(&include_path) {
+                    return Err(format_include_cycle_error(&include_path, &seen_owners));
+                }
+                seen_owners.insert(include_path.clone(), Some(path.as_ref().to_path_buf()));
+                Self::parse_text(
+                    config,
+                    &include_text,
+                    &include_path,
+                    repo_base.as_ref(),
+                    seen_owners,
+                )?;
                 continue;
             }
 
@@ -121,6 +138,7 @@ impl OwnersFileConfig {
             }
             current_set.owners.insert(line.to_string());
         }
+        seen_owners.remove(path.as_ref());
         Ok(())
     }
 }
@@ -189,16 +207,57 @@ fn resolve_include_path<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
         )
     })?;
 
-    if include_path_ref.is_absolute() {
-        return Ok(repo_base_path.join(
+    let path = if include_path_ref.is_absolute() {
+        repo_base_path.join(
             include_path_ref
                 .strip_prefix("/")
                 .or_else(|_| include_path_ref.strip_prefix("\\"))
                 .unwrap_or(include_path_ref),
-        ));
+        )
     } else {
-        return Ok(current_dir.join(include_path_ref));
+        current_dir.join(include_path_ref)
     };
+
+    let canonicalized_path = fs::canonicalize(&path).map_err(|error| {
+        anyhow!(
+            "Failed to canonicalize include path '{}': {}",
+            path.display(),
+            error
+        )
+    })?;
+    if !canonicalized_path.starts_with(repo_base_path) {
+        return Err(anyhow!(
+            "Include path '{}' is outside the repository base '{}'.",
+            canonicalized_path.display(),
+            repo_base_path.display()
+        ));
+    }
+    Ok(canonicalized_path)
+}
+
+fn format_include_cycle_error(
+    path: &PathBuf,
+    seen_owners: &HashMap<PathBuf, Option<PathBuf>>,
+) -> anyhow::Error {
+    let mut chain = vec![path.clone()];
+    let mut current = path;
+
+    // Walk the reverse linked list to get a nice printable chain of includes.
+    while let Some(Some(parent)) = seen_owners.get(current) {
+        chain.push(parent.clone());
+        current = parent;
+    }
+
+    // The error message is easier to read if it's in forward order rather than reverse.
+    chain.reverse();
+
+    let message = chain
+        .iter()
+        .map(|p| p.display().to_string())
+        .collect::<Vec<_>>()
+        .join(" -> ");
+
+    return anyhow!("Cycle detected in includes: {}", message);
 }
 
 #[cfg(test)]

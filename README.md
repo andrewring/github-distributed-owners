@@ -141,6 +141,65 @@ user4
 user5
 ```
 
+## Including One OWNERS File From Another
+
+To share OWNERS logic across multiple directories, you can `include` one OWNERS file from another.
+The `include` path can either begin with a `/` in which case it's treated as relative to the
+root of the repository, or not, in which case it's treated as relative to that OWNERS file path.
+
+Example:
+
+```shell
+# /foo/OWNERS
+user0
+user1
+
+[*.py]
+user2
+```
+
+```shell
+# /bar/OWNERS
+include /foo/OWNERS
+user3
+```
+
+```shell
+# /baz/OWNERS
+include ../bar/OWNERS
+```
+
+This gets unpacked such that `/bar/OWNERS` is effectively:
+
+```shell
+user0
+user1
+user3
+
+[*.py]
+user2
+```
+
+### Limitations
+
+#### Including OWNERS Within A File Pattern
+While `include`d OWNERS files may have file pattern rules themselves, which get applied
+to the including OWNERS, you may not `include` an OWNERS from within a file pattern rule.
+
+Example:
+
+```shell
+user0
+
+[*.py]
+# This include will generate an error.
+include /python/OWNERS
+```
+
+#### Setting Inherit Within Included OWNERS
+
+TODO: Define desired behavior
+
 ## License
 
 This Action is distributed under the terms of the MIT license, see [LICENSE](LICENSE) for details.
