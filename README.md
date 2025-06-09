@@ -169,7 +169,7 @@ user3
 include ../bar/OWNERS
 ```
 
-This gets unpacked such that `/bar/OWNERS` is effectively:
+This gets unpacked such that `/bar/OWNERS` and `/baz/OWNERS` are effectively:
 
 ```shell
 user0
@@ -182,7 +182,12 @@ user2
 
 ### Limitations
 
+To mitigate some of the complexity of `include`d OWNERS, there are some language features
+that are not available. If you believe you hae a use case for one of these features, please
+raise an issue and provide context on your use case.
+
 #### Including OWNERS Within A File Pattern
+
 While `include`d OWNERS files may have file pattern rules themselves, which get applied
 to the including OWNERS, you may not `include` an OWNERS from within a file pattern rule.
 
@@ -198,7 +203,8 @@ include /python/OWNERS
 
 #### Setting Inherit Within Included OWNERS
 
-TODO: Define desired behavior
+Currently, `include`d OWNERS files may not `set inherit = ...`. This is to avoid the challenge
+of defining semantics around how multiple conflicting `set inherit = ...` should interact.
 
 ## License
 

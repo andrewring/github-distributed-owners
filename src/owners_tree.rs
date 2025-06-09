@@ -465,4 +465,40 @@ mod tests {
         assert!(tree.is_err());
         Ok(())
     }
+
+    #[test]
+    fn included_file_set_statement() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/foo/OWNERS",
+            indoc! {"\
+                include /subdir/bar/OWNERS
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/bar/OWNERS",
+            indoc! {"\
+                set inherit = true
+                "
+            },
+        )?;
+
+        let temp_dir_path = temp_dir.path().canonicalize()?;
+        let tree = OwnersTree::load_from_files(&temp_dir_path, &ALLOW_ANY);
+
+        assert!(tree.is_err());
+        Ok(())
+    }
 }

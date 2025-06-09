@@ -120,6 +120,15 @@ impl OwnersFileConfig {
                 .maybe_process_set(line)
                 .map_err(|error| anyhow!("{} Encountered at {}:{}", error, source, line_number))?;
             if is_set_line {
+                // If there's more than one seen_owners, then we're inside an include where
+                // set statements aren't allowed.
+                if seen_owners.len() > 1 {
+                    return Err(anyhow!(
+                        "set statements are not allowed inside includes. Found at {}:{}",
+                        source,
+                        line_number
+                    ));
+                }
                 continue;
             }
 
