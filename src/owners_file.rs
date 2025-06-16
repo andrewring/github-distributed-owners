@@ -44,7 +44,7 @@ impl OwnersFileConfig {
         text: &str,
         path: P0,
         repo_base: P1,
-        seen_owners: &mut HashMap<PathBuf, Option<PathBuf>>,
+        seen_owners_files: &mut HashMap<PathBuf, Option<PathBuf>>,
     ) -> anyhow::Result<()> {
         // `active_pattern_key` tracks the current context.
         // `None`: Modifying `config.all_files`.
@@ -55,8 +55,8 @@ impl OwnersFileConfig {
             .to_str()
             .expect("Error converting file path to string");
 
-        if seen_owners.is_empty() {
-            seen_owners.insert(path.as_ref().to_path_buf(), None);
+        if seen_owners_files.is_empty() {
+            seen_owners_files.insert(path.as_ref().to_path_buf(), None);
         }
 
         for (i, raw_line) in text.lines().enumerate() {
@@ -92,16 +92,15 @@ impl OwnersFileConfig {
                     )
                 })?;
 
-                if seen_owners.contains_key(&include_path) {
-                    return Err(format_include_cycle_error(&include_path, &seen_owners));
-                }
-                seen_owners.insert(include_path.clone(), Some(path.as_ref().to_path_buf()));
+                check_no_circular_include(&include_path, &seen_owners_files)?;
+                seen_owners_files.insert(include_path.clone(), Some(path.as_ref().to_path_buf()));
+
                 Self::parse_text(
                     config,
                     &include_text,
                     &include_path,
                     repo_base.as_ref(),
-                    seen_owners,
+                    seen_owners_files,
                 )?;
                 continue;
             }
@@ -120,9 +119,9 @@ impl OwnersFileConfig {
                 .maybe_process_set(line)
                 .map_err(|error| anyhow!("{} Encountered at {}:{}", error, source, line_number))?;
             if is_set_line {
-                // If there's more than one seen_owners, then we're inside an include where
+                // If there's more than one seen_owners_files, then we're inside an include where
                 // set statements aren't allowed.
-                if seen_owners.len() > 1 {
+                if seen_owners_files.len() > 1 {
                     return Err(anyhow!(
                         "set statements are not allowed inside includes. Found at {}:{}",
                         source,
@@ -147,7 +146,7 @@ impl OwnersFileConfig {
             }
             current_set.owners.insert(line.to_string());
         }
-        seen_owners.remove(path.as_ref());
+        seen_owners_files.remove(path.as_ref());
         Ok(())
     }
 }
@@ -244,15 +243,19 @@ fn resolve_include_path<P0: AsRef<Path>, P1: AsRef<Path>, P2: AsRef<Path>>(
     Ok(canonicalized_path)
 }
 
-fn format_include_cycle_error(
+fn check_no_circular_include(
     path: &PathBuf,
-    seen_owners: &HashMap<PathBuf, Option<PathBuf>>,
-) -> anyhow::Error {
+    seen_owners_files: &HashMap<PathBuf, Option<PathBuf>>,
+) -> anyhow::Result<()> {
+    if !seen_owners_files.contains_key(path) {
+        return Ok(());
+    }
+
     let mut chain = vec![path.clone()];
     let mut current = path;
 
     // Walk the reverse linked list to get a nice printable chain of includes.
-    while let Some(Some(parent)) = seen_owners.get(current) {
+    while let Some(Some(parent)) = seen_owners_files.get(current) {
         chain.push(parent.clone());
         current = parent;
     }
@@ -264,9 +267,9 @@ fn format_include_cycle_error(
         .iter()
         .map(|p| p.display().to_string())
         .collect::<Vec<_>>()
-        .join(" -> ");
+        .join("\n     -> ");
 
-    return anyhow!("Cycle detected in includes: {}", message);
+    Err(anyhow!("Cycle detected in includes: \n.   {}", message))
 }
 
 #[cfg(test)]

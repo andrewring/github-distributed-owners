@@ -183,7 +183,7 @@ user2
 ### Limitations
 
 To mitigate some of the complexity of `include`d OWNERS, there are some language features
-that are not available. If you believe you hae a use case for one of these features, please
+that are not available. If you believe you have a use case for one of these features, please
 raise an issue and provide context on your use case.
 
 #### Including OWNERS Within A File Pattern
