@@ -20,7 +20,7 @@ impl OwnersFileConfig {
     ) -> anyhow::Result<OwnersFileConfig> {
         let path_ref = path.as_ref();
         let text = fs::read_to_string(path_ref)?;
-        Self::from_text(&text, path.as_ref(), repo_base.as_ref())
+        Self::from_text(text, path.as_ref(), repo_base.as_ref())
     }
 
     fn from_text<S: AsRef<str>, P0: AsRef<Path>, P1: AsRef<Path>>(
@@ -34,7 +34,7 @@ impl OwnersFileConfig {
             text.as_ref(),
             path.as_ref(),
             repo_base.as_ref(),
-            (&mut HashMap::new()).into(),
+            &mut HashMap::new(),
         )?;
         Ok(config)
     }
@@ -92,7 +92,7 @@ impl OwnersFileConfig {
                     )
                 })?;
 
-                check_no_circular_include(&include_path, &seen_owners_files)?;
+                check_no_circular_include(&include_path, seen_owners_files)?;
                 seen_owners_files.insert(include_path.clone(), Some(path.as_ref().to_path_buf()));
 
                 Self::parse_text(
@@ -184,12 +184,7 @@ fn maybe_get_include(line: &str) -> anyhow::Result<Option<String>> {
         }
 
         Ok(Some(path))
-    } else if MALFORMED_RE.is_match(line) {
-        Err(anyhow!(
-            "Invalid include format '{}'. Expected 'include <path>'.",
-            line,
-        ))
-    } else if line.to_lowercase().starts_with("include ") {
+    } else if MALFORMED_RE.is_match(line) || line.to_lowercase().starts_with("include ") {
         Err(anyhow!(
             "Invalid include format '{}'. Expected 'include <path>'.",
             line,
