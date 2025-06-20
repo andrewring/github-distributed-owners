@@ -123,6 +123,7 @@ mod test {
     fn generate_codeowners_single_simple() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -156,6 +157,7 @@ mod test {
     fn generate_codeowners_multiple_simple() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -168,6 +170,7 @@ mod test {
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
+                repo_base: PathBuf::from("/tree/root"),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         inherit: None,
@@ -216,6 +219,7 @@ mod test {
     fn generate_codeowners_single_with_overrides() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -272,6 +276,7 @@ mod test {
     fn generate_codeowners_multiple_with_overrides() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -293,6 +298,7 @@ mod test {
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
+                repo_base: PathBuf::from("/tree/root"),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         inherit: None,
@@ -359,6 +365,7 @@ mod test {
     fn generate_codeowners_no_implicit_inherit() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -380,6 +387,7 @@ mod test {
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
+                repo_base: PathBuf::from("/tree/root"),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         inherit: None,
@@ -446,6 +454,7 @@ mod test {
     fn generate_codeowners_selective_inherit() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -467,6 +476,7 @@ mod test {
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
+                repo_base: PathBuf::from("/tree/root"),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         inherit: Some(false),
@@ -533,6 +543,7 @@ mod test {
     fn generate_codeowners_selective_inherit_with_no_implicit() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -554,6 +565,7 @@ mod test {
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
+                repo_base: PathBuf::from("/tree/root"),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         inherit: Some(true),
@@ -620,6 +632,7 @@ mod test {
     fn generate_codeowners_subdir_without_owners() -> anyhow::Result<()> {
         let tree_node = TreeNode {
             path: PathBuf::from("/tree/root"),
+            repo_base: PathBuf::from("/tree/root"),
             owners_config: OwnersFileConfig {
                 all_files: OwnersSet {
                     inherit: None,
@@ -632,6 +645,7 @@ mod test {
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
+                repo_base: PathBuf::from("/tree/root"),
                 owners_config: OwnersFileConfig {
                     all_files: OwnersSet {
                         inherit: Some(false),

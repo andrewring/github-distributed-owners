@@ -338,6 +338,93 @@ mod test {
     }
 
     #[test]
+    fn test_generate_codeowners_from_files_with_include() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        let root_dir = temp_dir.path();
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
+            indoc! {"\
+                ada.lovelace
+                grace.hopper
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/foo/OWNERS",
+            indoc! {"\
+                margaret.hamilton
+                katherine.johnson
+
+                include /subdir/bar/OWNERS
+                include ../baz/OWNERS
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/bar/OWNERS",
+            indoc! {"\
+                mary.jackson
+                "
+            },
+        )?;
+        create_test_file(
+            &temp_dir,
+            "subdir/baz/OWNERS",
+            indoc! {"\
+                [*.py]
+                alan.turing
+                "
+            },
+        )?;
+
+        let expected = indoc! {"\
+            ################################################################################
+            #                             AUTO GENERATED FILE
+            #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
+            ################################################################################
+
+            * @ada.lovelace @grace.hopper
+            /subdir/bar/ @ada.lovelace @grace.hopper @mary.jackson
+            /subdir/baz/ @ada.lovelace @grace.hopper
+            /subdir/baz/*.py @ada.lovelace @alan.turing @grace.hopper
+            /subdir/foo/ @ada.lovelace @grace.hopper @katherine.johnson @margaret.hamilton @mary.jackson
+            /subdir/foo/*.py @ada.lovelace @alan.turing @grace.hopper @katherine.johnson @margaret.hamilton @mary.jackson
+
+            ################################################################################
+            #                             AUTO GENERATED FILE
+            #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
+            ################################################################################
+            "
+        };
+
+        let output_file = root_dir.join("CODEOWNERS");
+        let repo_root = Some(root_dir.to_path_buf());
+        let implicit_inherit = true;
+        let message = Option::<String>::None;
+
+        generate_codeowners_from_files(
+            repo_root,
+            Some(output_file.clone()),
+            implicit_inherit,
+            &ALLOW_ANY,
+            message,
+        )?;
+
+        let generated_codeowners = fs::read_to_string(output_file)?;
+
+        assert_eq!(generated_codeowners, expected);
+
+        Ok(())
+    }
+
+    #[test]
     fn test_get_auto_generated_notice_default() {
         let expected = indoc! {"\
             ################################################################################
