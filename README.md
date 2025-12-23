@@ -53,6 +53,9 @@ repos:
     hooks:
       - id: github-distributed-owners
 ```
+> [!WARNING]
+> pre-commit does not trigger on deletion of files matching patterns,
+> so removal of an OWNERS file can be missed by pre-commit.
 
 The default CODEOWNERS location is `.github/CODEOWNERS`. This can be changed via
 
