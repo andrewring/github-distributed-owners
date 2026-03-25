@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/andrewring/github-distributed-owners
-    rev: 072dd1552b699bdc92232f05634961cbb6f4f4fc
+    rev: 74698ae281dd5755330d3607dad7f110dc29a608
     hooks:
       - id: github-distributed-owners
   - repo: https://github.com/doublify/pre-commit-rust
