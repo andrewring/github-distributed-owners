@@ -49,7 +49,7 @@ Example pre-commit config:
 ```yaml
 repos:
   - repo: https://github.com/andrewring/github-distributed-owners
-    rev: v0.1.11
+    rev: v0.1.12
     hooks:
       - id: github-distributed-owners
 ```
