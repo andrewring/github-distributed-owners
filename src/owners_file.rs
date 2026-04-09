@@ -11,6 +11,7 @@ use std::path::PathBuf;
 pub struct OwnersFileConfig {
     pub all_files: OwnersSet,
     pub pattern_overrides: HashMap<String, OwnersSet>,
+    pub insertions: Vec<String>,
 }
 
 impl OwnersFileConfig {
@@ -60,11 +61,24 @@ impl OwnersFileConfig {
         }
 
         for (i, raw_line) in text.lines().enumerate() {
+            let line_number = i + 1;
+
+            if let Some(text) = maybe_get_insert(raw_line.trim()) {
+                if active_pattern_key.is_some() {
+                    return Err(anyhow!(
+                        "insert is not allowed in path-specific sections. Found at {}:{}",
+                        source,
+                        line_number
+                    ));
+                }
+                config.insertions.push(text);
+                continue;
+            }
+
             let line = clean_line(raw_line);
             if line.is_empty() {
                 continue;
             }
-            let line_number = i + 1;
 
             if let Some(include_file) = maybe_get_include(line)
                 .map_err(|error| anyhow!("{} Found at {}:{}", error, source, line_number))?
@@ -169,6 +183,11 @@ fn maybe_get_file_pattern(line: &str) -> Option<String> {
     }
 }
 
+/// Parses an insert directive, e.g., `insert THIS IS THE TEXT I WANT INSERTED`.
+fn maybe_get_insert(line: &str) -> Option<String> {
+    line.strip_prefix("insert ").map(|text| text.to_string())
+}
+
 /// Parses an include directive, e.g., `include path/to/another/OWNERS`.
 fn maybe_get_include(line: &str) -> anyhow::Result<Option<String>> {
     lazy_static! {
@@ -269,7 +288,9 @@ fn check_no_circular_include(
 
 #[cfg(test)]
 mod tests {
-    use crate::owners_file::{maybe_get_file_pattern, maybe_get_include, OwnersFileConfig};
+    use crate::owners_file::{
+        maybe_get_file_pattern, maybe_get_include, maybe_get_insert, OwnersFileConfig,
+    };
     use crate::owners_set::OwnersSet;
     use indoc::indoc;
     use std::collections::{HashMap, HashSet};
@@ -290,7 +311,7 @@ mod tests {
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>(),
             },
-            pattern_overrides: HashMap::default(),
+            ..OwnersFileConfig::default()
         };
 
         let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
@@ -315,7 +336,7 @@ mod tests {
                     .map(|s| s.to_string())
                     .collect::<HashSet<String>>(),
             },
-            pattern_overrides: HashMap::default(),
+            ..OwnersFileConfig::default()
         };
 
         let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
@@ -352,6 +373,7 @@ mod tests {
                         .collect::<HashSet<String>>(),
                 },
             )]),
+            insertions: Vec::default(),
         };
 
         let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
@@ -387,5 +409,82 @@ mod tests {
         assert!(maybe_get_include("include path with spaces").is_err()); // Regex `\S+` handles this.
         assert_eq!(maybe_get_include("not an include")?, None);
         Ok(())
+    }
+
+    #[test]
+    fn test_maybe_get_insert() {
+        assert_eq!(
+            maybe_get_insert("insert THIS IS THE TEXT"),
+            Some("THIS IS THE TEXT".to_string())
+        );
+        assert_eq!(
+            maybe_get_insert("insert # comment-like text"),
+            Some("# comment-like text".to_string())
+        );
+        assert_eq!(maybe_get_insert("insert"), None);
+        assert_eq!(maybe_get_insert("ada.lovelace"), None);
+        assert_eq!(maybe_get_insert(""), None);
+    }
+
+    #[test]
+    fn parse_with_insert() -> anyhow::Result<()> {
+        let input = indoc! {"\
+            ada.lovelace
+            grace.hopper
+            insert THIS IS THE TEXT I WANT INSERTED
+            "
+        };
+        let expected = OwnersFileConfig {
+            all_files: OwnersSet {
+                inherit: None,
+                owners: vec!["ada.lovelace", "grace.hopper"]
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            },
+            insertions: vec!["THIS IS THE TEXT I WANT INSERTED".to_string()],
+            ..OwnersFileConfig::default()
+        };
+
+        let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
+        assert_eq!(parsed, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_with_multiple_inserts() -> anyhow::Result<()> {
+        let input = indoc! {"\
+            ada.lovelace
+            insert first line
+            insert second line
+            "
+        };
+        let expected = OwnersFileConfig {
+            all_files: OwnersSet {
+                inherit: None,
+                owners: vec!["ada.lovelace"]
+                    .into_iter()
+                    .map(|s| s.to_string())
+                    .collect::<HashSet<String>>(),
+            },
+            insertions: vec!["first line".to_string(), "second line".to_string()],
+            ..OwnersFileConfig::default()
+        };
+
+        let parsed = OwnersFileConfig::from_text(input, "test data", "test data")?;
+        assert_eq!(parsed, expected);
+        Ok(())
+    }
+
+    #[test]
+    fn parse_insert_not_allowed_in_pattern_section() {
+        let input = indoc! {"\
+            ada.lovelace
+            [*.rs]
+            insert not allowed here
+            "
+        };
+        let result = OwnersFileConfig::from_text(input, "test data", "test data");
+        assert!(result.is_err());
     }
 }
