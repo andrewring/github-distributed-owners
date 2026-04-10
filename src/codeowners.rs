@@ -3,7 +3,9 @@ use itertools::Itertools;
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
 
-pub fn to_codeowners_string(codeowners: HashMap<String, HashSet<String>>) -> String {
+pub type CodeownersMap = HashMap<String, HashSet<String>>;
+
+pub fn to_codeowners_string(codeowners: CodeownersMap) -> String {
     codeowners
         .keys()
         .sorted()
@@ -47,16 +49,18 @@ pub fn to_codeowners_string(codeowners: HashMap<String, HashSet<String>>) -> Str
 pub fn generate_codeowners(
     owners_tree: &OwnersTree,
     implicit_inherit: bool,
-) -> anyhow::Result<HashMap<String, HashSet<String>>> {
+) -> anyhow::Result<(CodeownersMap, Vec<String>)> {
     let mut codeowners = HashMap::new();
+    let mut insertions = Vec::new();
     add_codeowners(
         owners_tree,
         &owners_tree.path,
         &HashSet::default(),
         implicit_inherit,
         &mut codeowners,
+        &mut insertions,
     )?;
-    Ok(codeowners)
+    Ok((codeowners, insertions))
 }
 
 fn add_codeowners(
@@ -64,7 +68,8 @@ fn add_codeowners(
     root_path: &Path,
     parent_owners: &HashSet<String>,
     implicit_inherit: bool,
-    codeowners: &mut HashMap<String, HashSet<String>>,
+    codeowners: &mut CodeownersMap,
+    insertions: &mut Vec<String>,
 ) -> anyhow::Result<()> {
     let owners_config = &tree_node.owners_config;
     let owners_set = &owners_config.all_files;
@@ -86,6 +91,8 @@ fn add_codeowners(
     }
     owners.extend(owners_set.owners.clone());
 
+    insertions.extend(owners_config.insertions.clone());
+
     // Add directory level ownership
     codeowners.insert(relative_path.clone(), owners.clone());
 
@@ -103,7 +110,14 @@ fn add_codeowners(
     }
 
     for child in &tree_node.children {
-        add_codeowners(child, root_path, &owners, implicit_inherit, codeowners)?;
+        add_codeowners(
+            child,
+            root_path,
+            &owners,
+            implicit_inherit,
+            codeowners,
+            insertions,
+        )?;
     }
 
     Ok(())
@@ -132,7 +146,7 @@ mod test {
                         .map(|s| s.to_string())
                         .collect::<HashSet<String>>(),
                 },
-                pattern_overrides: HashMap::default(),
+                ..OwnersFileConfig::default()
             },
             children: Vec::default(),
         };
@@ -146,7 +160,7 @@ mod test {
                 .collect::<HashSet<String>>(),
         )]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 
@@ -166,7 +180,7 @@ mod test {
                         .map(|s| s.to_string())
                         .collect::<HashSet<String>>(),
                 },
-                pattern_overrides: HashMap::default(),
+                ..OwnersFileConfig::default()
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
@@ -179,7 +193,7 @@ mod test {
                             .map(|s| s.to_string())
                             .collect::<HashSet<String>>(),
                     },
-                    pattern_overrides: HashMap::default(),
+                    ..OwnersFileConfig::default()
                 },
                 children: vec![],
             }],
@@ -208,7 +222,7 @@ mod test {
             ),
         ]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 
@@ -238,6 +252,7 @@ mod test {
                         ..OwnersSet::default()
                     },
                 )]),
+                insertions: Vec::default(),
             },
             children: Vec::default(),
         };
@@ -265,7 +280,7 @@ mod test {
             ),
         ]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 
@@ -295,6 +310,7 @@ mod test {
                         ..OwnersSet::default()
                     },
                 )]),
+                insertions: Vec::default(),
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
@@ -317,6 +333,7 @@ mod test {
                             ..OwnersSet::default()
                         },
                     )]),
+                    insertions: Vec::default(),
                 },
                 children: vec![],
             }],
@@ -354,7 +371,7 @@ mod test {
             ),
         ]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 
@@ -384,6 +401,7 @@ mod test {
                         ..OwnersSet::default()
                     },
                 )]),
+                insertions: Vec::default(),
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
@@ -406,6 +424,7 @@ mod test {
                             ..OwnersSet::default()
                         },
                     )]),
+                    insertions: Vec::default(),
                 },
                 children: vec![],
             }],
@@ -443,7 +462,7 @@ mod test {
             ),
         ]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 
@@ -473,6 +492,7 @@ mod test {
                         inherit: Some(false),
                     },
                 )]),
+                insertions: Vec::default(),
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
@@ -495,6 +515,7 @@ mod test {
                             ..OwnersSet::default()
                         },
                     )]),
+                    insertions: Vec::default(),
                 },
                 children: vec![],
             }],
@@ -532,7 +553,7 @@ mod test {
             ),
         ]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 
@@ -562,6 +583,7 @@ mod test {
                         inherit: Some(true),
                     },
                 )]),
+                insertions: Vec::default(),
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
@@ -584,6 +606,7 @@ mod test {
                             ..OwnersSet::default()
                         },
                     )]),
+                    insertions: Vec::default(),
                 },
                 children: vec![],
             }],
@@ -621,7 +644,7 @@ mod test {
             ),
         ]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 
@@ -641,7 +664,7 @@ mod test {
                         .map(|s| s.to_string())
                         .collect::<HashSet<String>>(),
                 },
-                pattern_overrides: HashMap::default(),
+                ..OwnersFileConfig::default()
             },
             children: vec![TreeNode {
                 path: PathBuf::from("/tree/root/foo/bar"),
@@ -651,7 +674,7 @@ mod test {
                         inherit: Some(false),
                         owners: HashSet::default(),
                     },
-                    pattern_overrides: HashMap::default(),
+                    ..OwnersFileConfig::default()
                 },
                 children: vec![],
             }],
@@ -669,7 +692,7 @@ mod test {
             ("/foo/bar/".to_string(), HashSet::default()),
         ]);
 
-        let codeowners = generate_codeowners(&tree_node, implicit_inherit)?;
+        let (codeowners, _) = generate_codeowners(&tree_node, implicit_inherit)?;
 
         assert_eq!(codeowners, expected);
 

@@ -46,12 +46,19 @@ where
     let root = repo_root.unwrap_or(std::env::current_dir()?);
     let tree = OwnersTree::load_from_files(root, allow_filter)?;
 
-    let codeowners = generate_codeowners(&tree, implicit_inherit)?;
+    let (codeowners, insertions) = generate_codeowners(&tree, implicit_inherit)?;
     let mut codeowners_text = to_codeowners_string(codeowners);
     let auto_generated_notice = get_auto_generated_notice(message);
 
-    codeowners_text =
-        format!("{auto_generated_notice}\n\n{codeowners_text}\n\n{auto_generated_notice}");
+    let insertions_text = insertions.join("\n");
+    if insertions_text.is_empty() {
+        codeowners_text =
+            format!("{auto_generated_notice}\n\n{codeowners_text}\n\n{auto_generated_notice}");
+    } else {
+        codeowners_text = format!(
+            "{auto_generated_notice}\n\n{insertions_text}\n\n{codeowners_text}\n\n{auto_generated_notice}"
+        );
+    }
 
     match output_file {
         None => println!("{}", codeowners_text),
@@ -468,5 +475,63 @@ mod test {
             "A much longer custom message which doesn't fit on a single line. It will need to be wrapped into multiple \
             lines, neatly.";
         assert_eq!(get_auto_generated_notice(Some(message)), expected);
+    }
+
+    #[test]
+    fn test_generate_codeowners_from_files_with_insert() -> anyhow::Result<()> {
+        let temp_dir = tempdir()?;
+        let root_dir = temp_dir.path();
+        create_test_file(
+            &temp_dir,
+            "OWNERS",
+            indoc! {
+                "ada.lovelace
+                grace.hopper
+                insert # This is a custom comment
+                insert ^[Special Team] @org/special-team
+                "
+            },
+        )?;
+
+        let expected = indoc! {"\
+            ################################################################################
+            #                             AUTO GENERATED FILE
+            #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
+            ################################################################################
+
+            # This is a custom comment
+            ^[Special Team] @org/special-team
+
+            * @ada.lovelace @grace.hopper
+
+            ################################################################################
+            #                             AUTO GENERATED FILE
+            #                            Do Not Manually Update
+            #                              For details, see:
+            #        https://github.com/andrewring/github-distributed-owners#readme
+            ################################################################################
+            "
+        };
+
+        let output_file = root_dir.join("CODEOWNERS");
+        let repo_root = Some(root_dir.to_path_buf());
+        let implicit_inherit = true;
+        let message = Option::<String>::None;
+
+        generate_codeowners_from_files(
+            repo_root,
+            Some(output_file.clone()),
+            implicit_inherit,
+            &ALLOW_ANY,
+            message,
+        )?;
+
+        let generated_codeowners = fs::read_to_string(output_file)?;
+
+        assert_eq!(generated_codeowners, expected);
+
+        Ok(())
     }
 }

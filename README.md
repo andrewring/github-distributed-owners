@@ -53,6 +53,7 @@ repos:
     hooks:
       - id: github-distributed-owners
 ```
+
 > [!WARNING]
 > pre-commit does not trigger on deletion of files matching patterns,
 > so removal of an OWNERS file can be missed by pre-commit.
@@ -208,6 +209,35 @@ include /python/OWNERS
 
 Currently, `include`d OWNERS files may not `set inherit = ...`. This is to avoid the challenge
 of defining semantics around how multiple conflicting `set inherit = ...` should interact.
+
+## Inserting Arbitrary Text
+
+You can insert arbitrary lines of text into the generated CODEOWNERS file using the `insert` directive.
+Each `insert` line produces a single line in the output, placed before the generated ownership entries.
+This is useful for adding comments, [CODEOWNERS sections](https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners#example-of-a-codeowners-file),
+or any other raw CODEOWNERS syntax that cannot be expressed through the standard OWNERS directives.
+
+Example:
+
+```shell
+# /OWNERS
+insert # This repository is maintained by the platform team
+insert ^[DevOps] @org/devops-team
+user0
+user1
+```
+
+This produces the following in the generated CODEOWNERS (between the auto-generated header and the ownership rules):
+
+```
+# This repository is maintained by the platform team
+^[DevOps] @org/devops-team
+
+* @user0 @user1
+```
+
+Insertions from OWNERS files across the tree are collected and placed together, in tree traversal order,
+before all generated ownership entries.
 
 ## License
 
