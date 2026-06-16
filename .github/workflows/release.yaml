@@ -155,17 +155,19 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     permissions:
-      contents: read
       packages: write
     env:
       REGISTRY: ghcr.io
       IMAGE_NAME: ${{ github.repository }}
     steps:
-      - uses: actions/checkout@v6
-        with:
-          ref: ${{ env.TAG }}
-          sparse-checkout: Dockerfile
-          sparse-checkout-cone-mode: false
+      - name: Create Dockerfile
+        run: |
+          cat > Dockerfile <<'DOCKERFILE'
+          FROM scratch
+          ARG TARGETARCH
+          COPY github-distributed-owners-linux-${TARGETARCH} /github-distributed-owners
+          ENTRYPOINT ["/github-distributed-owners"]
+          DOCKERFILE
 
       - name: Download Linux artifacts
         uses: actions/download-artifact@v4
