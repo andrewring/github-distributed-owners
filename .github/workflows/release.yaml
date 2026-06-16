@@ -82,7 +82,7 @@ jobs:
             target: x86_64-pc-windows-msvc
             asset_name: github-distributed-owners-windows-amd64.exe
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           ref: ${{ env.TAG }}
 
