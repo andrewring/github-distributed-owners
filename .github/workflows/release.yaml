@@ -28,6 +28,29 @@ env:
   TAG: ${{ inputs.tag || github.event.release.tag_name }}
 
 jobs:
+  summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log parameters
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          commit=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || echo "unknown")
+          {
+            echo "## Release Parameters"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "| --- | --- |"
+            echo "| **Tag** | \`$TAG\` |"
+            echo "| **Commit** | \`${commit:0:12}\` |"
+            echo "| **Trigger** | \`${{ github.event_name }}\` |"
+            echo "| **Actor** | @${{ github.actor }} |"
+            echo "| **Clobber** | \`${{ inputs.clobber || false }}\` |"
+            echo "| **Update floating tags** | \`${{ inputs.update_tags || false }}\` |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
   validate:
     name: Validate Release Tag
     if: github.event_name == 'workflow_dispatch'
