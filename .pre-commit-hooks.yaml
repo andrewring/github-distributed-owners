@@ -7,3 +7,12 @@
   args: ["--output-file=.github/CODEOWNERS"]
   pass_filenames: false
   require_serial: true
+- id: github-distributed-owners-docker
+  name: GitHub Distributed Owners (Docker)
+  description: Auto generate a GitHub compatible CODEOWNERS files from OWNERS files distributed through the file tree. Uses a pre-built Docker image instead of compiling from source.
+  entry: ghcr.io/andrewring/github-distributed-owners:0.1.12
+  language: docker_image
+  types: [file, text]
+  args: ["--output-file=.github/CODEOWNERS"]
+  pass_filenames: false
+  require_serial: true
