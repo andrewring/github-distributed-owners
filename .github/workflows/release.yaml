@@ -1,5 +1,5 @@
-name: Release Binaries
-run-name: Release Binaries (${{ inputs.tag || github.event.release.tag_name }})
+name: Release
+run-name: Release (${{ inputs.tag || github.event.release.tag_name }})
 
 on:
   release:
@@ -15,6 +15,11 @@ on:
         required: false
         type: boolean
         default: false
+      update_tags:
+        description: "Update floating Docker tags (latest, major, major.minor)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -23,6 +28,29 @@ env:
   TAG: ${{ inputs.tag || github.event.release.tag_name }}
 
 jobs:
+  summary:
+    name: Release Summary
+    runs-on: ubuntu-latest
+    steps:
+      - name: Log parameters
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          commit=$(gh api "repos/$GH_REPO/git/ref/tags/$TAG" --jq '.object.sha' 2>/dev/null || echo "unknown")
+          {
+            echo "## Release Parameters"
+            echo ""
+            echo "| Parameter | Value |"
+            echo "| --- | --- |"
+            echo "| **Tag** | \`$TAG\` |"
+            echo "| **Commit** | \`${commit:0:12}\` |"
+            echo "| **Trigger** | \`${{ github.event_name }}\` |"
+            echo "| **Actor** | @${{ github.actor }} |"
+            echo "| **Clobber** | \`${{ inputs.clobber || false }}\` |"
+            echo "| **Update floating tags** | \`${{ inputs.update_tags || false }}\` |"
+          } | tee -a "$GITHUB_STEP_SUMMARY"
+
   validate:
     name: Validate Release Tag
     if: github.event_name == 'workflow_dispatch'
@@ -94,6 +122,10 @@ jobs:
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
 
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
+
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
 
@@ -149,3 +181,62 @@ jobs:
             flags+=(--clobber)
           fi
           gh release upload "$TAG" artifacts/* "${flags[@]}"
+
+  docker:
+    name: Push Docker Image
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}
+    steps:
+      - name: Create Dockerfile
+        run: |
+          cat > Dockerfile <<'DOCKERFILE'
+          FROM scratch
+          ARG TARGETARCH
+          COPY --chmod=755 github-distributed-owners-linux-${TARGETARCH} /github-distributed-owners
+          ENTRYPOINT ["/github-distributed-owners"]
+          DOCKERFILE
+
+      - name: Download Linux artifacts
+        uses: actions/download-artifact@v4
+        with:
+          pattern: github-distributed-owners-linux-*
+          merge-multiple: true
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=${{ github.event_name == 'release' || inputs.update_tags }}
+          tags: |
+            type=semver,pattern={{version}},value=${{ env.TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.TAG }},enable=${{ github.event_name == 'release' || inputs.update_tags }}
+            type=semver,pattern={{major}},value=${{ env.TAG }},enable=${{ github.event_name == 'release' || inputs.update_tags }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v7
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
