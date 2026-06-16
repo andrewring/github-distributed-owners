@@ -1,6 +1,10 @@
+# Selecting either hook will generate the same CODEOWNERS file from the
+# OWNERS files distributed through the file tree. The docker-based hook
+# requires docker to be installed, while the rust-based hook requires
+# the rust compiler to be installed.
 - id: github-distributed-owners
   name: GitHub Distributed Owners
-  description: Auto generate a GitHub compatible CODEOWNERS files from OWNERS files distributed through the file tree.
+  description: Auto generate a GitHub compatible CODEOWNERS files from OWNERS files distributed through the file tree. Builds from source, requiring the rust compiler.
   entry: github-distributed-owners
   language: rust
   types: [file, text]
