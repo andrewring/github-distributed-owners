@@ -1,0 +1,150 @@
+name: Release Binaries
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Git tag to build and attach binaries to (e.g. v0.1.12)"
+        required: true
+        type: string
+      clobber:
+        description: "Overwrite existing release assets"
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+env:
+  TAG: ${{ inputs.tag || github.event.release.tag_name }}
+
+jobs:
+  validate:
+    name: Validate Release Tag
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check tag exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh api "repos/$GH_REPO/git/ref/tags/$TAG" > /dev/null 2>&1; then
+            echo "::error::Tag '$TAG' does not exist"
+            exit 1
+          fi
+          echo "Tag '$TAG' exists"
+
+      - name: Check release exists
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          if ! gh release view "$TAG" > /dev/null 2>&1; then
+            echo "::error::No GitHub Release found for tag '$TAG'"
+            exit 1
+          fi
+          echo "Release for '$TAG' exists"
+
+  build:
+    name: Build (${{ matrix.asset_name }})
+    needs: validate
+    if: ${{ !cancelled() && (needs.validate.result == 'success' || needs.validate.result == 'skipped') }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-musl
+            asset_name: github-distributed-owners-linux-amd64
+          - os: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-musl
+            asset_name: github-distributed-owners-linux-arm64
+          # NOTE: There is no "macos-latest-intel" alias. When GitHub
+          # deprecates the macos-15-intel runner, update this to the next
+          # available Intel macOS runner (e.g. macos-16-intel). Check
+          # available labels at:
+          # https://docs.github.com/en/actions/using-github-hosted-runners/using-github-hosted-runners/about-github-hosted-runners#standard-github-hosted-runners-for-public-repositories
+          # If no Intel macOS runner remains, this target can be cross-compiled
+          # from an ARM macOS runner or removed if x86_64 macOS is no longer
+          # relevant.
+          - os: macos-15-intel
+            target: x86_64-apple-darwin
+            asset_name: github-distributed-owners-darwin-amd64
+          - os: macos-latest
+            target: aarch64-apple-darwin
+            asset_name: github-distributed-owners-darwin-arm64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            asset_name: github-distributed-owners-windows-amd64.exe
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Install musl tools
+        if: contains(matrix.target, 'musl')
+        run: sudo apt-get update && sudo apt-get install -y musl-tools
+
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build
+        run: cargo build --release --locked --target ${{ matrix.target }}
+
+      - name: Smoke test (Unix)
+        if: runner.os != 'Windows'
+        run: ./target/${{ matrix.target }}/release/github-distributed-owners --version
+
+      - name: Smoke test (Windows)
+        if: runner.os == 'Windows'
+        run: ./target/${{ matrix.target }}/release/github-distributed-owners.exe --version
+
+      - name: Prepare binary (Unix)
+        if: runner.os != 'Windows'
+        run: cp target/${{ matrix.target }}/release/github-distributed-owners ${{ matrix.asset_name }}
+
+      - name: Prepare binary (Windows)
+        if: runner.os == 'Windows'
+        run: cp target/${{ matrix.target }}/release/github-distributed-owners.exe ${{ matrix.asset_name }}
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.asset_name }}
+          path: ${{ matrix.asset_name }}
+          if-no-files-found: error
+          retention-days: 1
+
+  upload:
+    name: Upload Release Assets
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Generate checksums
+        working-directory: artifacts
+        run: sha256sum * | tee checksums-sha256.txt
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          CLOBBER: ${{ inputs.clobber }}
+        run: |
+          flags=()
+          if [[ "$CLOBBER" == "true" ]]; then
+            flags+=(--clobber)
+          fi
+          gh release upload "$TAG" artifacts/* "${flags[@]}"
