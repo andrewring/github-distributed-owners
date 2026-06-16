@@ -1,7 +1,6 @@
 name: Release Binaries
 
 on:
-  push: # TEMPORARY: remove after first run, needed to register workflow for dispatch
   release:
     types: [published]
   workflow_dispatch:
