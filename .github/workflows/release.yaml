@@ -15,6 +15,11 @@ on:
         required: false
         type: boolean
         default: false
+      update_tags:
+        description: "Update floating Docker tags (latest, major, major.minor)"
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -93,6 +98,10 @@ jobs:
 
       - name: Add Rust target
         run: rustup target add ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.target }}
 
       - name: Build
         run: cargo build --release --locked --target ${{ matrix.target }}
@@ -193,10 +202,12 @@ jobs:
         uses: docker/metadata-action@v6
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          flavor: |
+            latest=${{ github.event_name == 'release' || inputs.update_tags }}
           tags: |
             type=semver,pattern={{version}},value=${{ env.TAG }}
-            type=semver,pattern={{major}}.{{minor}},value=${{ env.TAG }}
-            type=semver,pattern={{major}},value=${{ env.TAG }}
+            type=semver,pattern={{major}}.{{minor}},value=${{ env.TAG }},enable=${{ github.event_name == 'release' || inputs.update_tags }}
+            type=semver,pattern={{major}},value=${{ env.TAG }},enable=${{ github.event_name == 'release' || inputs.update_tags }}
 
       - name: Build and push
         uses: docker/build-push-action@v7
