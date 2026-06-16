@@ -174,7 +174,7 @@ jobs:
           cat > Dockerfile <<'DOCKERFILE'
           FROM scratch
           ARG TARGETARCH
-          COPY github-distributed-owners-linux-${TARGETARCH} /github-distributed-owners
+          COPY --chmod=755 github-distributed-owners-linux-${TARGETARCH} /github-distributed-owners
           ENTRYPOINT ["/github-distributed-owners"]
           DOCKERFILE
 
