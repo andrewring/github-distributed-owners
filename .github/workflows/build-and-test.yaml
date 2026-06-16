@@ -1,4 +1,4 @@
-name: CI
+name: Build & Test
 
 on:
   pull_request:
@@ -10,19 +10,13 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@1.90.0
-      - uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --all-features
+      - run: cargo build --release --all-features
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v6
       - uses: dtolnay/rust-toolchain@1.90.0
-      - uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --all-features
+      - run: cargo test --all-features
