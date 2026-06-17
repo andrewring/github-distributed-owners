@@ -195,7 +195,8 @@ jobs:
       - name: Create Dockerfile
         run: |
           cat > Dockerfile <<'DOCKERFILE'
-          FROM scratch
+          FROM alpine:3
+          RUN apk add --no-cache git
           ARG TARGETARCH
           COPY --chmod=755 github-distributed-owners-linux-${TARGETARCH} /github-distributed-owners
           ENTRYPOINT ["/github-distributed-owners"]

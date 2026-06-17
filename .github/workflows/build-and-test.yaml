@@ -6,6 +6,70 @@ on:
     branches: [main]
 
 jobs:
+  version-consistency:
+    name: Version Consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: Check version consistency
+        run: |
+          errors=0
+          results=""
+
+          # Extract source-of-truth values
+          pkg_version=$(grep '^version' Cargo.toml | head -1 | sed 's/.*"\(.*\)".*/\1/')
+          rust_version=$(grep '^channel' rust-toolchain.toml | sed 's/.*"\(.*\)".*/\1/')
+          echo "Package version: $pkg_version"
+          echo "Rust version: $rust_version"
+
+          check() {
+            local file="$1" pattern="$2" label="$3"
+            if ! grep -q "$pattern" "$file"; then
+              echo "::error file=$file::$label: expected '$pattern' in $file"
+              results+="| $label | \`$file\` | :x: Missing |"$'\n'
+              errors=$((errors + 1))
+            else
+              echo "OK: $label"
+              results+="| $label | \`$file\` | :white_check_mark: |"$'\n'
+            fi
+          }
+
+          # Package version checks
+          check .pre-commit-hooks.yaml "ghcr.io/andrewring/github-distributed-owners:${pkg_version}" \
+            "Docker hook image tag"
+          check README.md "rev: v${pkg_version}" \
+            "README pre-commit rev"
+          check Cargo.toml "rust-version = \"${rust_version}\"" \
+            "Cargo.toml rust-version"
+
+          # Rust version checks
+          check .github/workflows/build-and-test.yaml "rust-toolchain@${rust_version}" \
+            "build-and-test.yaml toolchain"
+          check .github/workflows/pre-commit.yaml "rust-toolchain@${rust_version}" \
+            "pre-commit.yaml toolchain"
+          check .github/workflows/cargo-deny.yaml "rust-version: '${rust_version}'" \
+            "cargo-deny.yaml rust-version"
+
+          # Write summary
+          {
+            echo "## Version Consistency"
+            echo ""
+            echo "| Source | Value |"
+            echo "| --- | --- |"
+            echo "| **Package version** (Cargo.toml) | \`$pkg_version\` |"
+            echo "| **Rust version** (rust-toolchain.toml) | \`$rust_version\` |"
+            echo ""
+            echo "| Check | File | Status |"
+            echo "| --- | --- | --- |"
+            echo -n "$results"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$errors" -gt 0 ]; then
+            echo "::error::Found $errors version inconsistencies"
+            exit 1
+          fi
+          echo "All versions consistent"
+
   build:
     name: Build
     runs-on: ubuntu-latest

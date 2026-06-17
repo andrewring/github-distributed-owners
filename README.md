@@ -44,6 +44,11 @@ github-distributed-owners --output-file .github/CODEOWNERS
 
 ### Pre-commit
 
+Selecting either hook will generate the same CODEOWNERS file from the OWNERS
+files distributed through the file tree. The docker-based hook requires docker
+to be installed, while the rust-based hook requires the rust compiler to be
+installed.
+
 Example pre-commit config:
 
 ```yaml
@@ -53,6 +58,18 @@ repos:
     hooks:
       - id: github-distributed-owners
 ```
+
+A Docker-based hook is also available, which uses a pre-built image and does not require a Rust
+toolchain:
+
+```yaml
+repos:
+  - repo: https://github.com/andrewring/github-distributed-owners
+    rev: v0.1.12
+    hooks:
+      - id: github-distributed-owners-docker
+```
+
 > [!WARNING]
 > pre-commit does not trigger on deletion of files matching patterns,
 > so removal of an OWNERS file can be missed by pre-commit.
