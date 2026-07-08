@@ -29,7 +29,7 @@ clap = { version = "3.2.23", features = ["derive"] }
 clap-verbosity-flag = "1.0.1"
 env_logger = "0.10.0"
 indoc = "2.0.4"
-itertools = "0.11.0"
+itertools = "0.14.0"
 lazy_static = "1.4.0"
 log = "0.4.20"
 regex = "1.9.5"
